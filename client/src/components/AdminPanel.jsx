@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAdmin } from '../hooks/useAdmin.js';
 import { Notice } from '../components/Notice.jsx';
+import { ServerLogs } from './ServerLogs.jsx';
 
 function ModerationRow({ user, onKick, onBan, protectedAccount }) {
   const [open, setOpen] = useState(false);
@@ -87,6 +88,10 @@ export function AdminPanel({ open, onClose, room, embedded = false }) {
             <Notice tone="danger">{admin.error}</Notice>
           </div>
         )}
+
+        <div className="mb-6">
+          <ServerLogs open={open} />
+        </div>
 
         <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
           Connected users

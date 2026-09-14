@@ -59,6 +59,8 @@ The sections below describe what actually works today.
 
 - One authenticated administrator account, seeded from the environment
 - Live view of every connected user and room
+- Live server log and status inside the app, streamed over the socket with
+  credentials redacted before they are ever buffered
 - Kick a user, ban them (per room or everywhere, permanently or for a period),
   delete a single message, or wipe a room's history
 - Bans are stored, so they outlive a restart, and expire on their own

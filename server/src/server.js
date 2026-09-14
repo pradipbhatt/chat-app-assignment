@@ -1,10 +1,13 @@
 import { createServer } from 'node:http';
+import { captureConsole } from './utils/logBuffer.js';
 import { config, logConfig } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/db.js';
 import { createApp } from './app.js';
 import { createSocketServer } from './socket/index.js';
 import { seedAdmin, loadReservedUsernames } from './models/User.js';
 import { startSweeper } from './socket/privateRooms.js';
+
+captureConsole();
 
 async function start() {
   await connectDatabase();

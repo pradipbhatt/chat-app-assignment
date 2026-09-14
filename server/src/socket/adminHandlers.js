@@ -1,4 +1,6 @@
 import { ROLES } from '../models/User.js';
+import { listEntries, subscribe } from '../utils/logBuffer.js';
+import { serverStatus } from '../routes/logs.js';
 import {
   overview,
   kickUser,
@@ -17,7 +19,24 @@ const DENIED = {
   message: 'Administrator access is required for this action.',
 };
 
+const LOG_ROOM = 'admin:logs';
+
 export function registerAdminHandlers(io, socket) {
+  let unsubscribe = null;
+  let statusTimer = null;
+
+  const stopStreaming = () => {
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+    if (statusTimer) {
+      clearInterval(statusTimer);
+      statusTimer = null;
+    }
+    socket.leave(LOG_ROOM);
+  };
+
   const guard = (handler) => async (payload = {}, ack) => {
     const respond = callable(ack);
 
@@ -35,6 +54,33 @@ export function registerAdminHandlers(io, socket) {
   };
 
   socket.on('admin:overview', guard(async () => ({ ok: true, ...overview() })));
+
+  socket.on(
+    'admin:logs:subscribe',
+    guard(async (payload) => {
+      stopStreaming();
+      socket.join(LOG_ROOM);
+
+      const requested = Number(payload.limit);
+      const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 400) : 120;
+
+      unsubscribe = subscribe((entry) => socket.emit('admin:log', entry));
+      statusTimer = setInterval(() => socket.emit('admin:status', serverStatus()), 5000);
+      statusTimer.unref();
+
+      return { ok: true, status: serverStatus(), entries: listEntries(limit) };
+    }),
+  );
+
+  socket.on(
+    'admin:logs:unsubscribe',
+    guard(async () => {
+      stopStreaming();
+      return { ok: true };
+    }),
+  );
+
+  socket.on('disconnect', stopStreaming);
 
   socket.on(
     'admin:kick',

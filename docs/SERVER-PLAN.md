@@ -259,6 +259,27 @@ token that expires mid-session keeps its role until the socket reconnects.
 Tokens last 12h and there is no revocation list; signing out is the client
 dropping the token.
 
+## 9a1. Live server logs
+
+The moderation panel shows the server's own log, live. Rather than calling the
+host's log API — which would mean storing a platform API key — the server keeps
+its own console output in a capped in-memory ring (400 lines) and streams it to
+subscribed administrators over the socket already in use, with a status sample
+every five seconds.
+
+**Everything is redacted on the way into the buffer, not on the way out**, so a
+secret never sits in memory waiting to be leaked by a later bug. Masked:
+connection strings with credentials, bearer tokens, JWTs, and any
+`password` / `secret` / `token` key whatever its formatting. There are tests
+asserting a Mongo password cannot survive the trip.
+
+Access is the same admin token as everything else: `admin:logs:subscribe` over
+the socket and `GET /api/admin/logs` both refuse anyone without it.
+
+The buffer is per-process, so it shows the running instance only and resets on
+deploy — for anything older, the host's own log retention is still the place to
+look.
+
 ## 9b. Acknowledgements
 
 Every client event answers through a Socket.IO ack — `{ ok: true, ... }` or

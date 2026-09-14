@@ -4,6 +4,7 @@ import { config } from './config/env.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
+import logRoutes from './routes/logs.js';
 import themeRoutes from './routes/themes.js';
 import roomRoutes from './routes/rooms.js';
 import messageRoutes from './routes/messages.js';
@@ -17,6 +18,7 @@ export function createApp() {
 
   app.use('/', healthRoutes);
   app.use('/api', authRoutes);
+  app.use('/api', logRoutes);
   app.use('/api', adminRoutes);
   app.use('/api', themeRoutes);
   app.use('/api', roomRoutes);

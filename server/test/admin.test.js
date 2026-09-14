@@ -303,6 +303,35 @@ test('a ban stored against an account name does not lock the administrator out',
   await mongoose.connection.collection('bans').deleteMany({ username: ADMIN_USERNAME });
 });
 
+test('the log stream is closed to anyone without an administrator token', async () => {
+  const plain = client();
+  await join(plain, 'Curious', room());
+
+  const attempt = await emit(plain, 'admin:logs:subscribe');
+  assert.equal(attempt.ok, false);
+  assert.equal(attempt.code, 'FORBIDDEN');
+
+  assert.equal((await api('/api/admin/logs')).status, 401);
+  assert.equal((await api('/api/admin/logs', { token: 'forged.token.value' })).status, 401);
+});
+
+test('an administrator receives the log tail and server status', async () => {
+  const admin = client({ token });
+  await new Promise((resolve) => {
+    admin.connect();
+    admin.on('connect', resolve);
+  });
+
+  const response = await emit(admin, 'admin:logs:subscribe', { limit: 50 });
+  assert.equal(response.ok, true);
+  assert.ok(Array.isArray(response.entries));
+  assert.equal(typeof response.status.uptime, 'number');
+  assert.ok(['connected', 'connecting', 'disconnected', 'disconnecting'].includes(response.status.database));
+
+  const stopped = await emit(admin, 'admin:logs:unsubscribe');
+  assert.equal(stopped.ok, true);
+});
+
 test('login is rate limited after repeated failures', async () => {
   let sawLimit = false;
   for (let attempt = 0; attempt < 12; attempt += 1) {
