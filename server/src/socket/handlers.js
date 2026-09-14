@@ -3,11 +3,11 @@ import { config } from '../config/env.js';
 import { saveMessage, getRecentMessages } from '../models/Message.js';
 import { validateUsername, validateRoom, validateText } from '../utils/validate.js';
 import { addUser, removeUser, getUser, getRoomUsers, isNameTakenInRoom } from './rooms.js';
+import { consumeToken } from './rateLimit.js';
 
-const RATE_LIMIT = { capacity: 5, refillPerSecond: 5 };
 const TYPING_TIMEOUT_MS = 4000;
 
-const sendError = (socket, code, message) => socket.emit('error:app', { code, message });
+const callable = (fn) => (typeof fn === 'function' ? fn : () => {});
 
 const systemMessage = (text) => ({
   id: randomUUID(),
@@ -17,28 +17,15 @@ const systemMessage = (text) => ({
   system: true,
 });
 
-function createRateLimiter() {
-  let tokens = RATE_LIMIT.capacity;
-  let last = Date.now();
-
-  return function take() {
-    const now = Date.now();
-    tokens = Math.min(
-      RATE_LIMIT.capacity,
-      tokens + ((now - last) / 1000) * RATE_LIMIT.refillPerSecond,
-    );
-    last = now;
-    if (tokens < 1) return false;
-    tokens -= 1;
-    return true;
-  };
-}
-
 export function registerHandlers(io, socket) {
-  const takeToken = createRateLimiter();
   let typingTimer = null;
 
   const broadcastUsers = (room) => io.to(room).emit('room:users', { users: getRoomUsers(room) });
+
+  const reject = (socket_, respond, code, message) => {
+    socket_.emit('error:app', { code, message });
+    respond({ ok: false, code, message });
+  };
 
   const stopTyping = (silent = false) => {
     if (typingTimer) {
@@ -49,7 +36,9 @@ export function registerHandlers(io, socket) {
     if (user && !silent) socket.to(user.room).emit('typing:stop', { username: user.username });
   };
 
-  socket.on('room:join', async (payload = {}) => {
+  socket.on('room:join', async (payload = {}, ack) => {
+    const respond = callable(ack);
+
     const existing = getUser(socket.id);
     if (existing) {
       socket.leave(existing.room);
@@ -58,50 +47,62 @@ export function registerHandlers(io, socket) {
     }
 
     const username = validateUsername(payload.username);
-    if (!username.ok) return sendError(socket, username.code, username.message);
+    if (!username.ok) return reject(socket, respond, username.code, username.message);
 
     const room = validateRoom(payload.room);
-    if (!room.ok) return sendError(socket, room.code, room.message);
+    if (!room.ok) return reject(socket, respond, room.code, room.message);
 
     if (isNameTakenInRoom(room.value, username.value)) {
-      return sendError(
+      return reject(
         socket,
+        respond,
         'USERNAME_TAKEN',
         `"${username.value}" is already in #${room.value}. Pick another name.`,
       );
     }
 
+    socket.join(room.value);
+    addUser(socket.id, username.value, room.value);
+
     let history = [];
+    let hasMore = false;
     try {
-      history = await getRecentMessages(room.value, config.historyLimit);
+      const page = await getRecentMessages(room.value, config.historyLimit);
+      history = page.messages;
+      hasMore = page.hasMore;
     } catch (error) {
       console.error('[socket] failed to load history', error);
     }
 
-    socket.join(room.value);
-    addUser(socket.id, username.value, room.value);
-
-    socket.emit('room:joined', {
+    const joined = {
       room: room.value,
       username: username.value,
       users: getRoomUsers(room.value),
       history,
-    });
+      hasMore,
+    };
+
+    socket.emit('room:joined', joined);
+    respond({ ok: true, ...joined });
 
     socket.to(room.value).emit('message:new', systemMessage(`${username.value} joined`));
     broadcastUsers(room.value);
   });
 
-  socket.on('message:send', async (payload = {}) => {
-    const user = getUser(socket.id);
-    if (!user) return sendError(socket, 'NOT_IN_ROOM', 'Join a room before sending messages.');
+  socket.on('message:send', async (payload = {}, ack) => {
+    const respond = callable(ack);
 
-    if (!takeToken()) {
-      return sendError(socket, 'RATE_LIMITED', 'You are sending messages too quickly.');
+    const user = getUser(socket.id);
+    if (!user) {
+      return reject(socket, respond, 'NOT_IN_ROOM', 'Join a room before sending messages.');
+    }
+
+    if (!consumeToken(user.room, user.username)) {
+      return reject(socket, respond, 'RATE_LIMITED', 'You are sending messages too quickly.');
     }
 
     const text = validateText(payload.text);
-    if (!text.ok) return sendError(socket, text.code, text.message);
+    if (!text.ok) return reject(socket, respond, text.code, text.message);
 
     stopTyping();
 
@@ -112,9 +113,35 @@ export function registerHandlers(io, socket) {
         text: text.value,
       });
       io.to(user.room).emit('message:new', message);
+      respond({ ok: true, id: message.id, ts: message.ts });
     } catch (error) {
       console.error('[socket] failed to save message', error);
-      sendError(socket, 'SEND_FAILED', 'Message could not be delivered. Try again.');
+      reject(socket, respond, 'SEND_FAILED', 'Message could not be delivered. Try again.');
+    }
+  });
+
+  socket.on('messages:load', async (payload = {}, ack) => {
+    const respond = callable(ack);
+
+    const user = getUser(socket.id);
+    if (!user) {
+      return reject(socket, respond, 'NOT_IN_ROOM', 'Join a room before loading history.');
+    }
+
+    const requested = Number(payload.limit);
+    const limit = Number.isFinite(requested)
+      ? Math.min(Math.max(requested, 1), 200)
+      : config.historyLimit;
+
+    try {
+      const page = await getRecentMessages(user.room, limit, payload.before ?? null);
+      if (page.invalidCursor) {
+        return reject(socket, respond, 'CURSOR_INVALID', 'Could not read that history cursor.');
+      }
+      respond({ ok: true, messages: page.messages, hasMore: page.hasMore });
+    } catch (error) {
+      console.error('[socket] failed to load messages', error);
+      reject(socket, respond, 'HISTORY_FAILED', 'Could not load older messages.');
     }
   });
 

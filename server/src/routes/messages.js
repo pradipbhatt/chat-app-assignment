@@ -15,8 +15,18 @@ router.get('/rooms/:room/messages', async (req, res) => {
     : config.historyLimit;
 
   try {
-    const messages = await getRecentMessages(room.value, limit);
-    return res.json({ room: room.value, count: messages.length, messages });
+    const page = await getRecentMessages(room.value, limit, req.query.before ?? null);
+    if (page.invalidCursor) {
+      return res
+        .status(400)
+        .json({ code: 'CURSOR_INVALID', message: 'The before cursor is not a valid timestamp.' });
+    }
+    return res.json({
+      room: room.value,
+      count: page.messages.length,
+      hasMore: page.hasMore,
+      messages: page.messages,
+    });
   } catch (error) {
     console.error('[api] failed to load messages', error);
     return res.status(500).json({ code: 'HISTORY_FAILED', message: 'Could not load messages.' });

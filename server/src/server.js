@@ -8,21 +8,38 @@ async function start() {
   await connectDatabase();
 
   const httpServer = createServer(createApp());
-  createSocketServer(httpServer);
+  const io = createSocketServer(httpServer);
 
   httpServer.listen(config.port, () => {
     logConfig();
     console.log(`[server] listening on http://localhost:${config.port}`);
   });
 
-  for (const signal of ['SIGINT', 'SIGTERM']) {
-    process.on(signal, async () => {
-      console.log(`\n[server] ${signal} received, shutting down`);
+  let shuttingDown = false;
+
+  const shutdown = async (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`\n[server] ${signal} received, shutting down`);
+
+    const force = setTimeout(() => {
+      console.warn('[server] forced exit after shutdown timeout');
+      process.exit(1);
+    }, config.shutdownTimeoutMs);
+    force.unref();
+
+    io.disconnectSockets(true);
+    io.close(() => {
       httpServer.close(async () => {
         await disconnectDatabase();
+        clearTimeout(force);
         process.exit(0);
       });
     });
+  };
+
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => shutdown(signal));
   }
 }
 

@@ -39,6 +39,12 @@ export function isNameTakenInRoom(room, username) {
   return getRoomUsers(room).some((name) => name.toLowerCase() === username.toLowerCase());
 }
 
+export function getActiveRooms() {
+  return [...rooms.keys()]
+    .map((room) => ({ room, users: getRoomUsers(room).length }))
+    .sort((a, b) => b.users - a.users || a.room.localeCompare(b.room));
+}
+
 export function getStats() {
   return { connections: users.size, rooms: rooms.size };
 }

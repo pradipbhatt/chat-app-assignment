@@ -4,7 +4,8 @@ import { registerHandlers } from './handlers.js';
 
 export function createSocketServer(httpServer) {
   const io = new Server(httpServer, {
-    cors: { origin: config.clientUrl, methods: ['GET', 'POST'] },
+    cors: { origin: config.clientUrls, methods: ['GET', 'POST'] },
+    maxHttpBufferSize: config.maxPayloadBytes,
   });
 
   io.on('connection', (socket) => {

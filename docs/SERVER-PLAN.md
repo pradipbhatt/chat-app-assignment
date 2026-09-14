@@ -71,8 +71,9 @@ writing either side.
 
 | Event | Payload | Server behaviour |
 |---|---|---|
-| `room:join` | `{ username, room }` | validate, join room, register user, ack |
-| `message:send` | `{ text }` | validate, stamp, broadcast to sender's room |
+| `room:join` | `{ username, room }` | validate, join room, register user, ack with roster + history |
+| `message:send` | `{ text }` | validate, persist, broadcast to sender's room; acks `{ ok, id, ts }` |
+| `messages:load` | `{ limit, before }` | acks `{ ok, messages, hasMore }` — pages back through history |
 | `room:leave` | — | leave room, deregister, notify room |
 | *(disconnect)* | — | same as `room:leave` |
 
@@ -166,10 +167,32 @@ macOS runs AirPlay Receiver (ControlCenter) on port 5000, so `listen` fails with
 `EADDRINUSE` from a process that looks like nothing the user started. Default is
 **5050**. Hit during the build, not in theory.
 
-## 9. `/health`
+## 9. REST routes
 
-`GET /health` → `{ status: 'ok', uptime, rooms, connections }`. Useful for the
-video demo, and required by most Node hosts' health checks.
+| Route | Returns |
+|---|---|
+| `GET /health` | status, uptime, database state, room and connection counts |
+| `GET /api/rooms` | active rooms with live occupancy, then rooms that only have history |
+| `GET /api/rooms/:room/messages?limit=&before=` | a page of history, newest last, with `hasMore` |
+
+`/api/rooms` is what the join screen reads to offer real rooms with occupancy
+instead of a hardcoded list.
+
+## 9b. Acknowledgements
+
+Every client event answers through a Socket.IO ack — `{ ok: true, ... }` or
+`{ ok: false, code, message }` — alongside the existing `error:app` broadcast.
+The ack is what lets the UI show a per-message state (sending / sent / failed)
+rather than leaving the sender to infer delivery from seeing their own
+broadcast arrive.
+
+## 9c. Shutdown
+
+`io.disconnectSockets(true)` then `io.close()` then `httpServer.close()`, with a
+5s forced-exit backstop. `httpServer.close()` alone never returns while a
+WebSocket is open: it waits for connections to end and a WebSocket does not end
+on its own. Measured before the fix — the process was still alive 15s after
+SIGTERM with one client attached.
 
 ## 10. Build order
 
@@ -181,7 +204,18 @@ video demo, and required by most Node hosts' health checks.
 6. Verify with two `socket.io-client` scripts (or `wscat`) before any React
    exists — proves the server independently of the UI
 
-## 11. Manual verification for step 1
+## 11. Automated tests
+
+`npm test` (Node's built-in runner) spawns the server against a separate
+`chatapp_test` database, exercises transport, rooms, isolation, roster, typing,
+validation, rate limiting, history, pagination, REST routes and shutdown, then
+drops the test database. 15 tests.
+
+The rate limit is configurable through `RATE_LIMIT_*` so the reconnect test can
+pin refill to zero — otherwise the bucket refills during the reconnect and the
+assertion becomes a race against wall-clock time.
+
+## 12. Manual verification
 
 - Two clients join room `research` → both see each other's messages
 - A client in room `other` sees **none** of them (this is the isolation check
