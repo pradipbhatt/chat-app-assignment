@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { config } from './config/env.js';
-import { getStats } from './socket/rooms.js';
+import healthRoutes from './routes/health.js';
+import messageRoutes from './routes/messages.js';
 
 export function createApp() {
   const app = express();
@@ -9,10 +10,10 @@ export function createApp() {
   app.use(cors({ origin: config.clientUrl }));
   app.use(express.json());
 
-  // Useful during the demo, and required by most Node hosts' health checks.
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', uptime: process.uptime(), ...getStats() });
-  });
+  app.use('/', healthRoutes);
+  app.use('/api', messageRoutes);
+
+  app.use((_req, res) => res.status(404).json({ code: 'NOT_FOUND', message: 'Route not found.' }));
 
   return app;
 }

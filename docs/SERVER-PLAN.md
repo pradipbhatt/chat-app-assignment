@@ -29,14 +29,20 @@ change; the event contract in §4 stays identical.
 ```text
 server/
 ├── src/
-│   ├── server.js          # entry: load env, create http server, mount io, listen
-│   ├── app.js             # express app: cors, json, /health route
+│   ├── server.js          # entry: connect db, create http server, mount io, listen
+│   ├── app.js             # express app: cors, json, route mounting
 │   ├── config/
-│   │   └── env.js         # read + validate PORT, CLIENT_URL; single source of truth
+│   │   ├── env.js         # single source of truth for configuration
+│   │   └── db.js          # mongoose connection lifecycle
+│   ├── models/
+│   │   └── Message.js     # message schema + persistence helpers
+│   ├── routes/
+│   │   ├── health.js      # GET /health
+│   │   └── messages.js    # GET /api/rooms/:room/messages
 │   ├── socket/
 │   │   ├── index.js       # io instance, cors, connection handler registration
-│   │   ├── handlers.js    # join / message / disconnect event handlers
-│   │   └── rooms.js       # in-memory room + user registry
+│   │   ├── handlers.js    # join / message / typing / disconnect handlers
+│   │   └── rooms.js       # in-memory presence registry
 │   └── utils/
 │       └── validate.js    # username/room/message sanitising + length caps
 ├── .env.example
@@ -49,7 +55,7 @@ binding a port, and `handlers.js` stays a pure list of event → behaviour.
 
 ## 3. Dependencies
 
-Runtime: `express`, `socket.io`, `cors`, `dotenv`
+Runtime: `express`, `socket.io`, `mongoose`, `cors`, `dotenv`
 Dev: none — Node 20's built-in `node --watch` replaces `nodemon`
 
 Scripts: `dev` → `node --watch src/server.js`, `start` → `node src/server.js`.
@@ -74,7 +80,7 @@ writing either side.
 
 | Event | Payload | Purpose |
 |---|---|---|
-| `room:joined` | `{ room, username, users[] }` | ack — client switches to chat view on this, not on `connect` |
+| `room:joined` | `{ room, username, users[], history[] }` | ack — client switches to chat view on this, not on `connect`; `history` is the last 50 persisted messages |
 | `message:new` | `{ id, username, text, ts, system }` | a chat message (`system: true` for join/leave notices) |
 | `room:users` | `{ users[] }` | roster changed |
 | `error:app` | `{ code, message }` | validation/other failure, shown in UI |
@@ -97,9 +103,17 @@ Socket.IO already tracks room membership; the second map exists so the roster
 can be built without touching adapter internals. Both are process-local and
 deliberately non-persistent — message history is out of scope per the task.
 
-**Consequence to state in the README:** state is lost on restart, and this does
-not survive horizontal scaling (a second instance would need the Redis adapter).
-Correct for the scope; worth naming so it does not read as an oversight.
+Presence is deliberately in memory — who is online right now is not a fact worth
+persisting, and a stale roster after a crash is worse than an empty one.
+
+**Messages are persisted in MongoDB** (`models/Message.js`), so history survives
+a restart and a joiner sees what was said before they arrived. System notices
+(`X joined` / `X left`) are **not** persisted: they describe a moment, and a
+history replay full of them reads as noise rather than conversation.
+
+Remaining consequence: presence still does not survive horizontal scaling — a
+second instance would need the Socket.IO Redis adapter. Messages would be fine,
+since they go through the database.
 
 ## 6. Validation rules (`utils/validate.js`)
 
@@ -136,7 +150,13 @@ Netlify origin is a config change, not a code change.
 ```env
 PORT=5050
 CLIENT_URL=http://localhost:5173
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/chatapp
+HISTORY_LIMIT=50
 ```
+
+`.env` is git-ignored and never committed; `.env.example` carries placeholders
+only. The app writes to a **`chatapp` database**, separate from anything else on
+the cluster.
 
 `config/env.js` reads these with defaults and logs the effective values on boot.
 
@@ -170,6 +190,12 @@ video demo, and required by most Node hosts' health checks.
 - Killing and restarting the server → clients auto-reconnect; they must re-emit
   `room:join` on reconnect, or they come back connected but in no room. This is
   the single most commonly missed case in this task.
+
+## Code style
+
+No comments in server source. Rationale that would otherwise sit in a comment
+lives in this document instead, so the reasoning is in one reviewable place and
+the code stays scannable.
 
 ## Open questions
 
