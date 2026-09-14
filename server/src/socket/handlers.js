@@ -41,6 +41,16 @@ export function registerHandlers(io, socket) {
   socket.on('room:join', async (payload = {}, ack) => {
     const respond = callable(ack);
 
+    if (socket.data.joining) {
+      return respond({ ok: false, code: 'JOIN_IN_FLIGHT', message: 'Already joining that room.' });
+    }
+    socket.data.joining = true;
+
+    const finish = (result) => {
+      socket.data.joining = false;
+      return result;
+    };
+
     const existing = getUser(socket.id);
     if (existing) {
       socket.leave(existing.room);
@@ -49,29 +59,33 @@ export function registerHandlers(io, socket) {
     }
 
     const username = validateUsername(payload.username);
-    if (!username.ok) return reject(socket, respond, username.code, username.message);
+    if (!username.ok) return finish(reject(socket, respond, username.code, username.message));
 
     const room = validateRoom(payload.room);
-    if (!room.ok) return reject(socket, respond, room.code, room.message);
+    if (!room.ok) return finish(reject(socket, respond, room.code, room.message));
 
     const claimedName = username.value.toLowerCase();
     const accountName = socket.data.account?.username?.toLowerCase() ?? null;
 
     if (isReservedUsername(claimedName) && claimedName !== accountName) {
-      return reject(
-        socket,
-        respond,
-        'USERNAME_RESERVED',
-        'That name belongs to a registered account. Choose another one.',
+      return finish(
+        reject(
+          socket,
+          respond,
+          'USERNAME_RESERVED',
+          'That name belongs to a registered account. Choose another one.',
+        ),
       );
     }
 
     if (socket.data.account && claimedName !== accountName) {
-      return reject(
-        socket,
-        respond,
-        'USERNAME_MISMATCH',
-        'Signed-in administrators must join under their own account name.',
+      return finish(
+        reject(
+          socket,
+          respond,
+          'USERNAME_MISMATCH',
+          'Signed-in administrators must join under their own account name.',
+        ),
       );
     }
 
@@ -79,11 +93,13 @@ export function registerHandlers(io, socket) {
       const ban =
         socket.data.role === ROLES.ADMIN ? null : await findActiveBan(username.value, room.value);
       if (ban) {
-        return reject(
-          socket,
-          respond,
-          'BANNED',
-          ban.reason ? `You are banned: ${ban.reason}` : 'You are banned from this room.',
+        return finish(
+          reject(
+            socket,
+            respond,
+            'BANNED',
+            ban.reason ? `You are banned: ${ban.reason}` : 'You are banned from this room.',
+          ),
         );
       }
     } catch (error) {
@@ -91,11 +107,13 @@ export function registerHandlers(io, socket) {
     }
 
     if (isNameTakenInRoom(room.value, username.value)) {
-      return reject(
-        socket,
-        respond,
-        'USERNAME_TAKEN',
-        `"${username.value}" is already in #${room.value}. Pick another name.`,
+      return finish(
+        reject(
+          socket,
+          respond,
+          'USERNAME_TAKEN',
+          `"${username.value}" is already in #${room.value}. Pick another name.`,
+        ),
       );
     }
 
@@ -121,6 +139,7 @@ export function registerHandlers(io, socket) {
       hasMore,
     };
 
+    socket.data.joining = false;
     socket.emit('room:joined', joined);
     respond({ ok: true, ...joined });
 

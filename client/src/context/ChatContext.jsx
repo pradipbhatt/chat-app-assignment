@@ -10,6 +10,7 @@ import {
 import { getSocket, connectSocket, emitWithAck } from '../lib/socket.js';
 import { createTokenBucket, sleep, OUTBOX_LIMITS } from '../lib/outbox.js';
 import { normaliseRoom } from '../lib/validation.js';
+import { rememberIdentity } from '../lib/identity.js';
 
 const ChatContext = createContext(null);
 
@@ -34,6 +35,7 @@ export function ChatProvider({ children }) {
   const outbox = useRef([]);
   const draining = useRef(false);
   const drainRef = useRef(null);
+  const joining = useRef(false);
   const bucket = useRef(createTokenBucket());
 
   const showNotice = useCallback((tone, message) => {
@@ -125,6 +127,9 @@ export function ChatProvider({ children }) {
   }, [showNotice]);
 
   const join = useCallback(async (username, room) => {
+    if (joining.current) return { ok: false, code: 'JOIN_IN_FLIGHT', message: 'Joining…' };
+    joining.current = true;
+
     const payload = { username: String(username).trim(), room: normaliseRoom(room) };
 
     setConnection('connecting');
@@ -132,10 +137,14 @@ export function ChatProvider({ children }) {
 
     const response = await emitWithAck('room:join', payload);
 
+    joining.current = false;
+
     if (!response.ok) {
       setConnection(getSocket().connected ? 'connected' : 'disconnected');
       return response;
     }
+
+    rememberIdentity(payload);
 
     lastJoin.current = payload;
     setSession({ room: response.room, username: response.username, role: response.role });
@@ -236,6 +245,26 @@ export function ChatProvider({ children }) {
   useEffect(() => {
     drainRef.current = drain;
   }, [drain]);
+
+  useEffect(() => {
+    const onPageHide = () => {
+      const socket = getSocket();
+      if (socket.connected) socket.disconnect();
+    };
+
+    const onPageShow = (event) => {
+      if (!event.persisted) return;
+      if (lastJoin.current) connectSocket();
+    };
+
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
+
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, []);
 
   const send = useCallback(
     (text) => {

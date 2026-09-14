@@ -6,6 +6,7 @@ import { SettingsButton } from '../components/SettingsButton.jsx';
 import { SettingsDialog } from '../components/SettingsDialog.jsx';
 import { useRooms } from '../hooks/useRooms.js';
 import { validateUsername, validateRoom, normaliseRoom } from '../lib/validation.js';
+import { readIdentity } from '../lib/identity.js';
 import { useChat } from '../context/ChatContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { AdminSignInDialog } from '../components/AdminSignInDialog.jsx';
@@ -26,8 +27,9 @@ export function JoinPage() {
 
   const [signInOpen, setSignInOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [username, setUsername] = useState('');
-  const [room, setRoom] = useState('');
+  const [remembered] = useState(readIdentity);
+  const [username, setUsername] = useState(remembered.username);
+  const [room, setRoom] = useState(remembered.room);
   const [touched, setTouched] = useState({ username: false, room: false });
   const [serverError, setServerError] = useState(null);
   const [joining, setJoining] = useState(false);
