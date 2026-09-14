@@ -4,6 +4,7 @@ import { connectDatabase, disconnectDatabase } from './config/db.js';
 import { createApp } from './app.js';
 import { createSocketServer } from './socket/index.js';
 import { seedAdmin, loadReservedUsernames } from './models/User.js';
+import { startSweeper } from './socket/privateRooms.js';
 
 async function start() {
   await connectDatabase();
@@ -12,6 +13,7 @@ async function start() {
 
   const httpServer = createServer(createApp());
   const io = createSocketServer(httpServer);
+  startSweeper();
 
   httpServer.listen(config.port, () => {
     logConfig();

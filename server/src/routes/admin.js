@@ -73,7 +73,10 @@ router.delete('/admin/bans/:id', async (req, res) => {
 
 router.delete('/admin/messages/:id', async (req, res) => {
   try {
-    return respond(res, await deleteMessage({ id: req.params.id, actor: req.auth.username }));
+    return respond(
+      res,
+      await deleteMessage({ id: req.params.id, room: req.body?.room ?? null, actor: req.auth.username }),
+    );
   } catch (error) {
     console.error('[admin] delete message failed', error);
     return res.status(400).json({ code: 'DELETE_FAILED', message: 'Could not delete that message.' });

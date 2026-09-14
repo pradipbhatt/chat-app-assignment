@@ -4,6 +4,13 @@ import { getIo } from '../socket/ioRef.js';
 import { findSocketIds, getAllUsers, getActiveRooms, getRoomUsers } from '../socket/rooms.js';
 import { validateRoom, validateUsername } from '../utils/validate.js';
 import { isReservedUsername } from '../models/User.js';
+import {
+  isPrivateName,
+  listPrivateRooms,
+  removeMessage,
+  clearMessages,
+  getPrivateRoom,
+} from '../socket/privateRooms.js';
 
 const notFound = (message) => ({ ok: false, code: 'NOT_FOUND', message });
 const invalid = (code, message) => ({ ok: false, code, message });
@@ -16,11 +23,29 @@ const protectedAccount = (username) =>
 
 export function overview() {
   const users = getAllUsers();
-  const rooms = getActiveRooms();
+  const active = getActiveRooms();
+  const privateRooms = listPrivateRooms();
+  const privateByName = new Map(privateRooms.map((entry) => [entry.room, entry]));
+
+  const rooms = active.map((entry) => ({
+    ...entry,
+    private: isPrivateName(entry.room),
+    expiresAt: privateByName.get(entry.room)?.expiresAt ?? null,
+  }));
+
+  const idle = privateRooms
+    .filter((entry) => !active.some((room) => room.room === entry.room))
+    .map((entry) => ({ room: entry.room, users: 0, private: true, expiresAt: entry.expiresAt }));
+
   return {
-    rooms,
-    users: users.map(({ username, room, role }) => ({ username, room, role })),
-    totals: { users: users.length, rooms: rooms.length },
+    rooms: [...rooms, ...idle],
+    users: users.map(({ username, room, role }) => ({
+      username,
+      room,
+      role,
+      private: isPrivateName(room),
+    })),
+    totals: { users: users.length, rooms: rooms.length + idle.length },
   };
 }
 
@@ -80,22 +105,42 @@ export async function bans() {
   return { ok: true, bans: await listBans() };
 }
 
-export async function deleteMessage({ id, actor }) {
+export async function deleteMessage({ id, actor, room = null }) {
+  if (room && isPrivateName(room)) {
+    if (!getPrivateRoom(room)) return notFound('That room has closed.');
+    if (!removeMessage(room, id)) return notFound('That message no longer exists.');
+
+    const io = getIo();
+    if (io) io.to(room).emit('message:deleted', { id, by: actor });
+
+    return { ok: true, id, room };
+  }
+
   const message = await Message.findById(id).exec();
   if (!message) return notFound('That message no longer exists.');
 
-  const room = message.room;
+  const storedRoom = message.room;
   await message.deleteOne();
 
   const io = getIo();
-  if (io) io.to(room).emit('message:deleted', { id, by: actor });
+  if (io) io.to(storedRoom).emit('message:deleted', { id, by: actor });
 
-  return { ok: true, id, room };
+  return { ok: true, id, room: storedRoom };
 }
 
 export async function clearRoom({ room, actor }) {
   const validated = validateRoom(room);
   if (!validated.ok) return invalid(validated.code, validated.message);
+
+  if (isPrivateName(validated.value)) {
+    if (!getPrivateRoom(validated.value)) return notFound('That room has closed.');
+    const cleared = clearMessages(validated.value);
+
+    const io = getIo();
+    if (io) io.to(validated.value).emit('room:cleared', { room: validated.value, by: actor });
+
+    return { ok: true, room: validated.value, deleted: cleared };
+  }
 
   const result = await Message.deleteMany({ room: validated.value }).exec();
 

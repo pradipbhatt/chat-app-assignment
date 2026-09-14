@@ -29,8 +29,10 @@ The sections below describe what actually works today.
 **For someone using it**
 
 - Pick a display name and a room, and start talking — no sign-up
-- Start a new room in one tap and share its link; anyone who opens
+- Start a private room in one tap and share its link; anyone who opens
   `/r/<room>` lands on a join screen for that room with only a name to fill in
+- Private rooms are unlisted and unguessable, keep nothing in the database, and
+  close themselves a few hours later or shortly after everyone leaves
 - Rooms on the join screen show live occupancy, not a hardcoded list
 - Messages arrive instantly in every window in that room
 - See who is present, and who is typing

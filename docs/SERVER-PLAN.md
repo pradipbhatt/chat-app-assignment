@@ -178,6 +178,33 @@ macOS runs AirPlay Receiver (ControlCenter) on port 5000, so `listen` fails with
 `/api/rooms` is what the join screen reads to offer real rooms with occupancy
 instead of a hardcoded list.
 
+## 8c. Private rooms
+
+A room whose name starts with `p-` is private. It is created through
+`room:create`, which returns an unguessable slug — a readable pair plus 12 hex
+characters — and that slug is the only key: anyone holding the link can enter,
+anyone without it cannot, and guessing one is not practical.
+
+Private rooms live entirely in memory:
+
+- **Never written to MongoDB.** No room record, no messages. `GET /api/rooms`
+  filters them out, so they cannot be discovered from the room list.
+- **Messages sit in a capped buffer** (200 per room) so a late joiner still sees
+  the conversation, without unbounded growth over a long session.
+- **They expire.** Four hours from creation regardless of activity, or ten
+  minutes after the last person leaves, whichever comes first. A sweeper runs
+  every minute. Someone rejoining inside the grace period keeps the room alive.
+- **An expired slug is gone, not recycled.** Joining it returns `ROOM_EXPIRED`
+  rather than quietly creating a fresh room of the same name.
+
+Administrators keep full reach: private rooms appear in `admin:overview` marked
+`private`, and kick, ban, delete and clear all work inside them — delete and
+clear operate on the memory buffer instead of the database.
+
+**Stated limitation:** because they are in memory, private rooms do not survive
+a server restart and would not be shared across a second instance. That is the
+right trade for a room that is meant to be temporary, but it is a trade.
+
 ## 9a. Roles and administration
 
 Two roles: `user` and `admin`.

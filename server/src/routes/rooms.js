@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { getActiveRooms } from '../socket/rooms.js';
+import { isPrivateName } from '../socket/privateRooms.js';
 import { getRoomsWithHistory } from '../models/Message.js';
 
 const router = Router();
 
 router.get('/rooms', async (_req, res) => {
-  const active = getActiveRooms();
+  const active = getActiveRooms().filter((entry) => !isPrivateName(entry.room));
   const activeNames = new Set(active.map((entry) => entry.room));
 
   let archived = [];

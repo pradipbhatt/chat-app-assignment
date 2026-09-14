@@ -26,6 +26,7 @@ export function ChatPage() {
     hasMore,
     loadingOlder,
     roomCleared,
+    privateRoom,
     send,
     leave,
     signalTyping,
@@ -43,7 +44,7 @@ export function ChatPage() {
   const offline = connection !== 'connected';
   const canModerate = isAdmin && session.role === 'admin';
 
-  const deleteMessage = (id) => emitWithAck('admin:delete-message', { id });
+  const deleteMessage = (id) => emitWithAck('admin:delete-message', { id, room: session.room });
 
   return (
     <div className="flex h-[100dvh] flex-col">
@@ -51,6 +52,14 @@ export function ChatPage() {
         <div className="min-w-0">
           <h1 className="truncate font-display text-xl font-extrabold text-fg">#{session.room}</h1>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            {privateRoom && (
+              <span
+                title="Only people with the link can join. Nothing here is stored."
+                className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fg-muted shadow-clay-in"
+              >
+                private
+              </span>
+            )}
             <span className="truncate text-xs text-fg-muted">{session.username}</span>
             {canModerate && (
               <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
@@ -102,6 +111,15 @@ export function ChatPage() {
       {notice && (
         <div className="px-4 pt-3 sm:px-6">
           <Notice tone={notice.tone}>{notice.message}</Notice>
+        </div>
+      )}
+
+      {privateRoom && messages.length === 0 && (
+        <div className="px-4 pt-3 sm:px-6">
+          <Notice tone="info">
+            Private room — only people you send the link to can join. Messages are not stored, and
+            the room closes once everyone leaves.
+          </Notice>
         </div>
       )}
 

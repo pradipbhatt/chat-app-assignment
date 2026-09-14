@@ -7,7 +7,7 @@ import { SettingsDialog } from '../components/SettingsDialog.jsx';
 import { useRooms } from '../hooks/useRooms.js';
 import { validateUsername, validateRoom, normaliseRoom } from '../lib/validation.js';
 import { readIdentity } from '../lib/identity.js';
-import { readRoomFromUrl, suggestRoomName } from '../lib/roomLink.js';
+import { readRoomFromUrl } from '../lib/roomLink.js';
 import { useChat } from '../context/ChatContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { AdminSignInDialog } from '../components/AdminSignInDialog.jsx';
@@ -17,13 +17,14 @@ const FRIENDLY = {
   USERNAME_RESERVED: 'That name belongs to a registered account. Pick another one.',
   USERNAME_MISMATCH: 'Signed-in administrators must join under their account name.',
   BANNED: 'You are not able to join that room.',
+  ROOM_EXPIRED: 'That private room has closed. Ask whoever shared it for a new link.',
   ROOM_CHARSET: 'Use lowercase letters, numbers and hyphens only.',
   TIMEOUT: 'The server did not respond. Check that it is running.',
 };
 
 export function JoinPage() {
   const { rooms, status, refresh } = useRooms();
-  const { join, notice, dismissNotice } = useChat();
+  const { join, createRoom, notice, dismissNotice } = useChat();
   const { account, isAdmin, signOut } = useAuth();
 
   const [signInOpen, setSignInOpen] = useState(false);
@@ -139,14 +140,25 @@ export function JoinPage() {
                 <span className="text-sm font-medium text-fg">Room</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setRoom(suggestRoomName());
-                    setTouched((state) => ({ ...state, room: true }));
+                  disabled={joining || Boolean(usernameError)}
+                  onClick={async () => {
                     setServerError(null);
+                    setJoining(true);
+                    const created = await createRoom(effectiveUsername);
+                    if (!created.ok) {
+                      setJoining(false);
+                      setServerError({ message: created.message || 'Could not create a room.' });
+                      return;
+                    }
+                    const response = await join(effectiveUsername, created.room);
+                    setJoining(false);
+                    if (!response.ok) {
+                      setServerError({ message: FRIENDLY[response.code] || response.message });
+                    }
                   }}
-                  className="rounded-full bg-elevated px-3 py-1.5 text-xs font-bold text-fg-muted shadow-clay-in hover:text-fg"
+                  className="rounded-full bg-elevated px-3 py-1.5 text-xs font-bold text-fg-muted shadow-clay-in hover:text-fg disabled:opacity-50"
                 >
-                  Start a new room
+                  Start a private room
                 </button>
               </div>
               <RoomPicker rooms={rooms} status={status} value={normaliseRoom(room)} onSelect={selectRoom} />

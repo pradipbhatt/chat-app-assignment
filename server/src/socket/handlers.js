@@ -5,6 +5,15 @@ import { validateUsername, validateRoom, validateText } from '../utils/validate.
 import { addUser, removeUser, getUser, getRoomUsers, isNameTakenInRoom } from './rooms.js';
 import { consumeToken } from './rateLimit.js';
 import { findActiveBan } from '../models/Ban.js';
+import {
+  isPrivateName,
+  createPrivateRoom,
+  getPrivateRoom,
+  markOccupied,
+  markEmpty,
+  appendMessage,
+  readMessages,
+} from './privateRooms.js';
 import { ROLES, isReservedUsername } from '../models/User.js';
 
 const TYPING_TIMEOUT_MS = 4000;
@@ -22,6 +31,8 @@ const systemMessage = (text) => ({
 export function registerHandlers(io, socket) {
   let typingTimer = null;
 
+  const roomIsEmpty = (room) => getRoomUsers(room).length === 0;
+
   const broadcastUsers = (room) => io.to(room).emit('room:users', { users: getRoomUsers(room) });
 
   const reject = (socket_, respond, code, message) => {
@@ -37,6 +48,16 @@ export function registerHandlers(io, socket) {
     const user = getUser(socket.id);
     if (user && !silent) socket.to(user.room).emit('typing:stop', { username: user.username });
   };
+
+  socket.on('room:create', (payload = {}, ack) => {
+    const respond = callable(ack);
+
+    const username = validateUsername(payload.username);
+    if (!username.ok) return respond({ ok: false, code: username.code, message: username.message });
+
+    const created = createPrivateRoom(username.value);
+    return respond({ ok: true, room: created.slug, expiresAt: created.expiresAt, private: true });
+  });
 
   socket.on('room:join', async (payload = {}, ack) => {
     const respond = callable(ack);
@@ -63,6 +84,21 @@ export function registerHandlers(io, socket) {
 
     const room = validateRoom(payload.room);
     if (!room.ok) return finish(reject(socket, respond, room.code, room.message));
+
+    let privateRoom = null;
+    if (isPrivateName(room.value)) {
+      privateRoom = getPrivateRoom(room.value);
+      if (!privateRoom) {
+        return finish(
+          reject(
+            socket,
+            respond,
+            'ROOM_EXPIRED',
+            'That private room has closed. Ask for a new link.',
+          ),
+        );
+      }
+    }
 
     const claimedName = username.value.toLowerCase();
     const accountName = socket.data.account?.username?.toLowerCase() ?? null;
@@ -122,12 +158,20 @@ export function registerHandlers(io, socket) {
 
     let history = [];
     let hasMore = false;
-    try {
-      const page = await getRecentMessages(room.value, config.historyLimit);
+
+    if (privateRoom) {
+      const page = readMessages(room.value, config.historyLimit);
       history = page.messages;
       hasMore = page.hasMore;
-    } catch (error) {
-      console.error('[socket] failed to load history', error);
+      markOccupied(room.value);
+    } else {
+      try {
+        const page = await getRecentMessages(room.value, config.historyLimit);
+        history = page.messages;
+        hasMore = page.hasMore;
+      } catch (error) {
+        console.error('[socket] failed to load history', error);
+      }
     }
 
     const joined = {
@@ -137,6 +181,8 @@ export function registerHandlers(io, socket) {
       users: getRoomUsers(room.value),
       history,
       hasMore,
+      private: Boolean(privateRoom),
+      expiresAt: privateRoom ? privateRoom.expiresAt : null,
     };
 
     socket.data.joining = false;
@@ -164,6 +210,15 @@ export function registerHandlers(io, socket) {
 
     stopTyping();
 
+    if (isPrivateName(user.room)) {
+      const message = appendMessage(user.room, { username: user.username, text: text.value });
+      if (!message) {
+        return reject(socket, respond, 'ROOM_EXPIRED', 'That private room has closed.');
+      }
+      io.to(user.room).emit('message:new', message);
+      return respond({ ok: true, id: message.id, ts: message.ts });
+    }
+
     try {
       const message = await saveMessage({
         room: user.room,
@@ -190,6 +245,14 @@ export function registerHandlers(io, socket) {
     const limit = Number.isFinite(requested)
       ? Math.min(Math.max(requested, 1), 200)
       : config.historyLimit;
+
+    if (isPrivateName(user.room)) {
+      const page = readMessages(user.room, limit, payload.before ?? null);
+      if (page.invalidCursor) {
+        return reject(socket, respond, 'CURSOR_INVALID', 'Could not read that history cursor.');
+      }
+      return respond({ ok: true, messages: page.messages, hasMore: page.hasMore });
+    }
 
     try {
       const page = await getRecentMessages(user.room, limit, payload.before ?? null);
@@ -226,6 +289,8 @@ export function registerHandlers(io, socket) {
     socket.leave(user.room);
     io.to(user.room).emit('message:new', systemMessage(`${user.username} left`));
     broadcastUsers(user.room);
+
+    if (isPrivateName(user.room) && roomIsEmpty(user.room)) markEmpty(user.room);
   };
 
   socket.on('room:leave', departRoom);

@@ -27,6 +27,7 @@ export function ChatProvider({ children }) {
   const [pending, setPending] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [roomCleared, setRoomCleared] = useState(false);
+  const [privateRoom, setPrivateRoom] = useState(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
   const lastJoin = useRef(null);
@@ -151,6 +152,7 @@ export function ChatProvider({ children }) {
 
     lastJoin.current = payload;
     setSession({ room: response.room, username: response.username, role: response.role });
+    setPrivateRoom(response.private ? { expiresAt: response.expiresAt } : null);
     setMessages(response.history ?? []);
     setUsers(response.users ?? []);
     setHasMore(Boolean(response.hasMore));
@@ -324,6 +326,11 @@ export function ChatProvider({ children }) {
     return response;
   }, [loadingOlder, messages, showNotice]);
 
+  const createRoom = useCallback(async (username) => {
+    connectSocket();
+    return emitWithAck('room:create', { username: String(username || 'guest').trim() });
+  }, []);
+
   const leave = useCallback(() => {
     const socket = getSocket();
     socket.emit('room:leave');
@@ -332,6 +339,7 @@ export function ChatProvider({ children }) {
     outbox.current = [];
     clearRoomFromUrl();
     setSession(null);
+    setPrivateRoom(null);
     setMessages([]);
     setUsers([]);
     setTypingUsers([]);
@@ -352,7 +360,9 @@ export function ChatProvider({ children }) {
       hasMore,
       loadingOlder,
       roomCleared,
+      privateRoom,
       join,
+      createRoom,
       send,
       leave,
       signalTyping,
@@ -372,7 +382,9 @@ export function ChatProvider({ children }) {
       hasMore,
       loadingOlder,
       roomCleared,
+      privateRoom,
       join,
+      createRoom,
       send,
       leave,
       signalTyping,

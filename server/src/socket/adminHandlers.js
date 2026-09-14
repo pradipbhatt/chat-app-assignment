@@ -67,7 +67,9 @@ export function registerAdminHandlers(io, socket) {
 
   socket.on(
     'admin:delete-message',
-    guard((payload, account) => deleteMessage({ id: payload.id, actor: account.username })),
+    guard((payload, account) =>
+      deleteMessage({ id: payload.id, room: payload.room ?? null, actor: account.username }),
+    ),
   );
 
   socket.on(
