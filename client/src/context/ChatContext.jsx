@@ -74,16 +74,20 @@ export function ChatProvider({ children }) {
     const onConnect = () => {
       setConnection('connected');
       setUnreachable(null);
-      drainRef.current?.();
-      if (lastJoin.current) {
-        socket.emit('room:join', lastJoin.current, (response) => {
-          if (response?.ok) {
-            setUsers(response.users ?? []);
-            setMessages(response.history ?? []);
-            setHasMore(Boolean(response.hasMore));
-          }
-        });
+
+      if (!lastJoin.current) {
+        drainRef.current?.();
+        return;
       }
+
+      socket.emit('room:join', lastJoin.current, async (response) => {
+        if (response?.ok) {
+          setUsers(response.users ?? []);
+          setMessages(await Promise.all((response.history ?? []).map(toReadable)));
+          setHasMore(Boolean(response.hasMore));
+        }
+        drainRef.current?.();
+      });
     };
 
     const describeOutage = () =>
@@ -163,7 +167,7 @@ export function ChatProvider({ children }) {
       socket.off('error:app', onAppError);
       if (noticeTimer.current) clearTimeout(noticeTimer.current);
     };
-  }, [showNotice]);
+  }, [showNotice, toReadable]);
 
   const join = useCallback(async (username, room, passcode = '') => {
     if (joining.current) return { ok: false, code: 'JOIN_IN_FLIGHT', message: 'Joining…' };
@@ -293,6 +297,12 @@ export function ChatProvider({ children }) {
       if (response.ok) {
         outbox.current.shift();
         setPending((current) => current.filter((entry) => entry.tempId !== item.tempId));
+        continue;
+      }
+
+      if (response.code === 'NOT_IN_ROOM' && item.attempts < OUTBOX_LIMITS.maxAttempts) {
+        markPending(item.tempId, { status: 'queued' });
+        await sleep(OUTBOX_LIMITS.refusalBackoffMs * 2);
         continue;
       }
 

@@ -211,11 +211,19 @@ them before they join and badges the room `no key` rather than pretending.
 
 ### Administrator review, and what it costs
 
-An administrator can read private rooms — and because that is true, the room
-says so. The private room notice reads *"Encrypted in your browser — and an
-administrator can open this room for review"*, permanently, not only while the
-room is empty. An interface that called this end to end while an administrator
-could read it would be lying to the people relying on it.
+An administrator can read private rooms.
+
+**The interface does not tell users this.** That is the owner's decision, taken
+deliberately after the alternative was offered, and it is recorded here rather
+than hidden: the chat interface describes private rooms only as encrypted in the
+browser, and says nothing about administrator review. Anyone evaluating the
+privacy of this app should read this paragraph as the authoritative statement,
+not the wording in the product.
+
+Administration lives on a separate page at `/admin`. Nothing in the chat
+interface mentions it — no sign-in entry point, no moderation controls, no
+wording about review. A person using the chat sees only Invite, the roster,
+Leave and Settings.
 
 It works by escrow rather than by handing the server a key:
 

@@ -10,7 +10,6 @@ import { readIdentity } from '../lib/identity.js';
 import { readRoomFromUrl, readKeyFromUrl } from '../lib/roomLink.js';
 import { useChat } from '../context/ChatContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { AdminSignInDialog } from '../components/AdminSignInDialog.jsx';
 
 const FRIENDLY = {
   USERNAME_TAKEN: 'Someone in that room is already using this name.',
@@ -29,7 +28,6 @@ export function JoinPage() {
   const { join, createRoom, notice, dismissNotice } = useChat();
   const { account, isAdmin, signOut } = useAuth();
 
-  const [signInOpen, setSignInOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [remembered] = useState(readIdentity);
   const [invitedRoom] = useState(readRoomFromUrl);
@@ -82,23 +80,6 @@ export function JoinPage() {
       <header className="flex items-center justify-between gap-3 px-6 py-5">
         <span className="font-display text-lg font-extrabold text-fg">Chat Room</span>
         <div className="flex items-center gap-2">
-          {isAdmin ? (
-            <button
-              type="button"
-              onClick={signOut}
-              className="rounded-full bg-accent px-4 py-2 font-display text-sm font-bold text-accent-fg shadow-clay-accent transition-transform hover:-translate-y-0.5"
-            >
-              {account.username} · sign out
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSignInOpen(true)}
-              className="rounded-full bg-surface px-4 py-2 font-display text-sm font-bold text-fg-muted shadow-clay-sm transition-transform hover:-translate-y-0.5 hover:text-fg"
-            >
-              Admin sign in
-            </button>
-          )}
           <SettingsButton onClick={() => setSettingsOpen(true)} />
         </div>
       </header>
@@ -221,7 +202,6 @@ export function JoinPage() {
         </div>
       </main>
 
-      <AdminSignInDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );

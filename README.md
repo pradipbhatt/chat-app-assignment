@@ -36,9 +36,10 @@ The sections below describe what actually works today.
   nothing readable
 - The decryption key travels in the link fragment, which browsers never send to
   a server; the passcode controls who may enter, the key controls who can read
-- An administrator can review private conversations by unsealing an escrow key
-  with a passphrase typed in their browser — and every private room says so on
-  screen, because an interface that hid it would be lying
+- An administrator can review private conversations from a separate page at
+  `/admin`, by unsealing an escrow key with a passphrase typed in their browser.
+  The chat interface makes no mention of administration at all; see
+  `docs/SERVER-PLAN.md` for what that means for user privacy
 - Private rooms are unlisted and unguessable, keep nothing in the database, and
   close themselves a few hours later or shortly after everyone leaves
 - Rooms on the join screen show live occupancy, not a hardcoded list

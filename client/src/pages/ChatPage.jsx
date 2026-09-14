@@ -9,10 +9,8 @@ import { ShareRoom } from '../components/ShareRoom.jsx';
 import { SettingsButton } from '../components/SettingsButton.jsx';
 import { SettingsDialog } from '../components/SettingsDialog.jsx';
 import { Notice } from '../components/Notice.jsx';
-import { AdminPanel } from '../components/AdminPanel.jsx';
 import { SlideOver } from '../components/SlideOver.jsx';
 import { emitWithAck } from '../lib/socket.js';
-import { useMediaQuery } from '../hooks/useMediaQuery.js';
 
 export function ChatPage() {
   const {
@@ -37,10 +35,8 @@ export function ChatPage() {
   } = useChat();
 
   const { isAdmin } = useAuth();
-  const [panelOpen, setPanelOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const wideScreen = useMediaQuery('(min-width: 768px)');
 
   const offline = connection !== 'connected';
   const canModerate = isAdmin && session.role === 'admin';
@@ -57,7 +53,7 @@ export function ChatPage() {
               <span
                 title={
                   privateRoom.encrypted
-                    ? 'Encrypted in your browser. An administrator with the review key can open it.'
+                    ? 'Encrypted in your browser before it is sent.'
                     : 'Private, but this tab has no key so messages cannot be read.'
                 }
                 className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide shadow-clay-in ${
@@ -93,21 +89,6 @@ export function ChatPage() {
             {users.length} online
           </button>
 
-          {canModerate && (
-            <button
-              type="button"
-              onClick={() => setPanelOpen((value) => !value)}
-              aria-pressed={panelOpen}
-              className={`rounded-full px-3.5 py-2 font-display text-sm font-bold transition-transform hover:-translate-y-0.5 ${
-                panelOpen
-                  ? 'bg-accent text-accent-fg shadow-clay-accent'
-                  : 'bg-surface text-fg-muted shadow-clay-sm hover:text-fg'
-              }`}
-            >
-              Moderate
-            </button>
-          )}
-
           <button
             type="button"
             onClick={leave}
@@ -125,21 +106,11 @@ export function ChatPage() {
         </div>
       )}
 
-      {privateRoom && (
-        <div className="px-4 pt-3 sm:px-6">
-          <Notice tone={privateRoom.reviewable ? 'warning' : 'info'}>
-            {privateRoom.reviewable
-              ? 'Encrypted in your browser — and an administrator can open this room for review.'
-              : 'Encrypted in your browser. Only people with the link and passcode can read it.'}
-          </Notice>
-        </div>
-      )}
-
       {privateRoom && messages.length === 0 && (
         <div className="px-4 pt-3 sm:px-6">
           <Notice tone="info">
-            Send someone the full invite link and the passcode from Invite. The room closes once
-            everyone leaves.
+            Private room — messages are encrypted in your browser. Send someone the full invite
+            link and the passcode from Invite. The room closes once everyone leaves.
           </Notice>
         </div>
       )}
@@ -179,9 +150,6 @@ export function ChatPage() {
           />
         </section>
 
-        {canModerate && panelOpen && wideScreen && (
-          <AdminPanel open onClose={() => setPanelOpen(false)} room={session.room} />
-        )}
       </div>
 
       <SlideOver open={membersOpen} onClose={() => setMembersOpen(false)} title="In this room">
@@ -190,11 +158,6 @@ export function ChatPage() {
 
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      {canModerate && !wideScreen && (
-        <SlideOver open={panelOpen} onClose={() => setPanelOpen(false)} title="Moderation">
-          <AdminPanel open onClose={() => setPanelOpen(false)} room={session.room} embedded />
-        </SlideOver>
-      )}
     </div>
   );
 }

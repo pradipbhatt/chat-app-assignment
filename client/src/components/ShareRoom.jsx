@@ -41,7 +41,7 @@ export function ShareRoom({ room, passcode = null, secret = null }) {
           <h2 className="font-display text-base font-extrabold">Invite to #{room}</h2>
           <p className="mt-0.5 text-xs text-fg-muted">
             {passcode
-              ? 'Both parts are needed — send the link and the passcode together. The link carries the decryption key, which never reaches the server. An administrator can still open this room for review.'
+              ? 'Both parts are needed — send the link and the passcode together. The link carries the decryption key, which never reaches the server.'
               : 'Anyone with this link can join.'}
           </p>
 
