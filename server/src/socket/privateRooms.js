@@ -1,9 +1,10 @@
 import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto';
+import { config } from '../config/env.js';
 
 export const PRIVATE_PREFIX = 'p-';
 
-const LIFETIME_MS = 4 * 60 * 60 * 1000;
-const EMPTY_GRACE_MS = 10 * 60 * 1000;
+const LIFETIME_MS = config.privateRoom.lifetimeHours * 60 * 60 * 1000;
+const EMPTY_GRACE_MS = config.privateRoom.graceHours * 60 * 60 * 1000;
 const MAX_BUFFERED = 200;
 const SWEEP_INTERVAL_MS = 60 * 1000;
 const PASSCODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

@@ -285,9 +285,12 @@ Private rooms live entirely in memory:
   filters them out, so they cannot be discovered from the room list.
 - **Messages sit in a capped buffer** (200 per room) so a late joiner still sees
   the conversation, without unbounded growth over a long session.
-- **They expire.** Four hours from creation regardless of activity, or ten
-  minutes after the last person leaves, whichever comes first. A sweeper runs
-  every minute. Someone rejoining inside the grace period keeps the room alive.
+- **They expire.** Twenty four hours from creation, or six hours after the last
+  person leaves, whichever comes first — both tunable through
+  `PRIVATE_ROOM_LIFETIME_HOURS` and `PRIVATE_ROOM_GRACE_HOURS`. A sweeper runs
+  every minute, and someone rejoining inside the grace period keeps the room
+  alive. The first numbers were four hours and ten minutes, which closed rooms
+  while people were still coming back to them.
 - **An expired slug is gone, not recycled.** Joining it returns `ROOM_EXPIRED`
   rather than quietly creating a fresh room of the same name.
 
@@ -369,6 +372,11 @@ asserting a Mongo password cannot survive the trip.
 
 Access is the same admin token as everything else: `admin:logs:subscribe` over
 the socket and `GET /api/admin/logs` both refuse anyone without it.
+
+The token is kept in `localStorage` and lasts thirty days, so an administrator
+stays signed in until they sign out rather than losing the session when the tab
+closes. It was briefly held in `sessionStorage` to stop an admin session leaking
+into every tab; moving administration to its own page removed that concern.
 
 The buffer is per-process, so it shows the running instance only and resets on
 deploy — for anything older, the host's own log retention is still the place to

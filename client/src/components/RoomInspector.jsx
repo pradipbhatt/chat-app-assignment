@@ -3,30 +3,24 @@ import { emitWithAck, getSocket } from '../lib/socket.js';
 import { decryptText, isEnvelope } from '../lib/crypto.js';
 import { unwrapRoomKey, readPrivateRoom } from '../lib/escrowBridge.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { formatTime, initials, avatarTone } from '../lib/format.js';
+import { MessageList } from './MessageList.jsx';
+import { UserList } from './UserList.jsx';
 import { Notice } from './Notice.jsx';
 
-const TONE_CLASS = {
-  accent: 'bg-accent text-accent-fg',
-  success: 'bg-success text-bg',
-  warning: 'bg-warning text-bg',
-  danger: 'bg-danger text-bg',
-};
-
 export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
-  const { token } = useAuth();
+  const { token, account } = useAuth();
   const [selected, setSelected] = useState('');
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
   const [isPrivate, setIsPrivate] = useState(false);
   const [state, setState] = useState('idle');
   const [error, setError] = useState(null);
+  const [cleared, setCleared] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [target, setTarget] = useState(null);
   const [reason, setReason] = useState('');
 
   const roomKey = useRef(null);
-  const endRef = useRef(null);
 
   const decode = useCallback(async (message) => {
     if (message.system || !isEnvelope(message.text)) return message;
@@ -43,16 +37,23 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
 
     const onMessage = async (message) => {
       const readable = await decode(message);
-      if (active) setMessages((current) => [...current, readable]);
+      if (!active) return;
+      setCleared(false);
+      setMessages((current) => [...current, readable]);
     };
     const onUsers = (payload) => active && setUsers(payload.users ?? []);
     const onDeleted = (payload) =>
       active && setMessages((current) => current.filter((entry) => entry.id !== payload.id));
-    const onCleared = () => active && setMessages([]);
+    const onCleared = () => {
+      if (!active) return;
+      setMessages([]);
+      setCleared(true);
+    };
 
     const load = async () => {
       setState('loading');
       setError(null);
+      setCleared(false);
       roomKey.current = null;
 
       const response = await emitWithAck('admin:observe', { room: selected });
@@ -96,14 +97,11 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
     };
   }, [selected, escrowKey, token, decode]);
 
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' });
-  }, [messages]);
+  const deleteMessage = (id) => emitWithAck('admin:delete-message', { id, room: selected });
 
   const act = async (kind) => {
     if (!target) return;
-    const run = kind === 'kick' ? onKick : onBan;
-    await run(target, selected, reason);
+    await (kind === 'kick' ? onKick : onBan)(target, selected, reason);
     setTarget(null);
     setReason('');
   };
@@ -166,36 +164,41 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
             </Notice>
           )}
 
-          <div className="scrollbar-soft max-h-72 overflow-y-auto rounded-clay bg-bg p-3 shadow-clay-in">
-            {state === 'loading' && <p className="text-xs text-fg-subtle">Opening the room…</p>}
-            {state === 'ready' && messages.length === 0 && (
-              <p className="text-xs text-fg-subtle">Nothing has been said here.</p>
-            )}
+          <div className="flex h-[26rem] overflow-hidden rounded-panel bg-bg shadow-clay-in">
+            <aside className="scrollbar-soft hidden w-44 shrink-0 overflow-y-auto bg-surface px-3 py-4 sm:block">
+              <UserList users={users} username={account?.username ?? ''} />
+            </aside>
 
-            <ul className="flex flex-col gap-1.5">
-              {messages.map((message) => (
-                <li key={message.id} className="text-[11px] leading-snug">
-                  {message.system ? (
-                    <span className="italic text-fg-subtle">{message.text}</span>
-                  ) : (
-                    <>
-                      <span className="font-mono text-fg-subtle">{formatTime(message.ts)} </span>
-                      <span className="font-bold text-fg">{message.username}: </span>
-                      <span className={message.locked ? 'italic text-fg-subtle' : 'text-fg-muted'}>
-                        {message.locked ? 'encrypted' : message.text}
-                      </span>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <div ref={endRef} />
+            <div className="flex min-w-0 flex-1 flex-col">
+              {state === 'loading' ? (
+                <p className="p-4 text-xs text-fg-subtle">Opening the room…</p>
+              ) : (
+                <MessageList
+                  messages={messages}
+                  pending={[]}
+                  username={`__observer__${Math.random()}`}
+                  hasMore={false}
+                  loadingOlder={false}
+                  onLoadOlder={() => {}}
+                  onRetry={() => {}}
+                  onDiscard={() => {}}
+                  canModerate
+                  onDeleteMessage={deleteMessage}
+                  roomCleared={cleared}
+                />
+              )}
+
+              <div className="bg-surface px-4 py-3 text-center text-[11px] font-bold text-fg-subtle">
+                Watching in read only — you cannot post here
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
             <h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-subtle">
-              In this room · {users.length}
+              Manage people · {users.length}
             </h3>
+
             {users.length === 0 ? (
               <p className="text-xs text-fg-subtle">Nobody is here right now.</p>
             ) : (
@@ -204,22 +207,17 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
                   <li key={user.username}>
                     <button
                       type="button"
+                      disabled={user.role === 'admin'}
                       onClick={() => setTarget(target === user.username ? null : user.username)}
                       aria-pressed={target === user.username}
-                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-bold shadow-clay-sm ${
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-bold shadow-clay-sm disabled:opacity-40 ${
                         target === user.username
                           ? 'bg-accent text-accent-fg'
                           : 'bg-surface text-fg-muted hover:text-fg'
                       }`}
                     >
-                      <span
-                        className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] ${
-                          TONE_CLASS[avatarTone(user.username)]
-                        }`}
-                      >
-                        {initials(user.username)}
-                      </span>
                       {user.username}
+                      {user.role === 'admin' ? ' · account' : ''}
                     </button>
                   </li>
                 ))}

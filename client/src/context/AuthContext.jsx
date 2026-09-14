@@ -7,7 +7,7 @@ const TOKEN_KEY = 'chat-admin-token';
 
 const readToken = () => {
   try {
-    return sessionStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(TOKEN_KEY);
   } catch (error) {
     return null;
   }
@@ -15,8 +15,8 @@ const readToken = () => {
 
 const writeToken = (token) => {
   try {
-    if (token) sessionStorage.setItem(TOKEN_KEY, token);
-    else sessionStorage.removeItem(TOKEN_KEY);
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
   } catch (error) {
     return;
   }

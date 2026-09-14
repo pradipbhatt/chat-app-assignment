@@ -21,8 +21,12 @@ export const config = {
       : 5,
   },
   shutdownTimeoutMs: Number(process.env.SHUTDOWN_TIMEOUT_MS) || 5000,
+  privateRoom: {
+    lifetimeHours: Number(process.env.PRIVATE_ROOM_LIFETIME_HOURS) || 24,
+    graceHours: Number(process.env.PRIVATE_ROOM_GRACE_HOURS) || 6,
+  },
   jwtSecret: process.env.JWT_SECRET || '',
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '12h',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '30d',
   admin: {
     username: (process.env.ADMIN_USERNAME || '').trim(),
     password: process.env.ADMIN_PASSWORD || '',
