@@ -5,7 +5,7 @@ import { Notice } from '../components/Notice.jsx';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.jsx';
 import { useRooms } from '../hooks/useRooms.js';
 import { validateUsername, validateRoom, normaliseRoom } from '../lib/validation.js';
-import { connectSocket, emitWithAck } from '../lib/socket.js';
+import { useChat } from '../context/ChatContext.jsx';
 
 const FRIENDLY = {
   USERNAME_TAKEN: 'Someone in that room is already using this name.',
@@ -16,8 +16,9 @@ const FRIENDLY = {
   TIMEOUT: 'The server did not respond. Check that it is running.',
 };
 
-export function JoinPage({ onJoined }) {
+export function JoinPage() {
   const { rooms, status, refresh } = useRooms();
+  const { join } = useChat();
 
   const [username, setUsername] = useState('');
   const [room, setRoom] = useState('');
@@ -43,13 +44,7 @@ export function JoinPage({ onJoined }) {
     if (usernameError || roomError) return;
 
     setJoining(true);
-    connectSocket();
-
-    const response = await emitWithAck('room:join', {
-      username: username.trim(),
-      room: normaliseRoom(room),
-    });
-
+    const response = await join(username, room);
     setJoining(false);
 
     if (!response.ok) {
@@ -60,8 +55,6 @@ export function JoinPage({ onJoined }) {
       refresh();
       return;
     }
-
-    onJoined(response);
   };
 
   return (
