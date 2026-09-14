@@ -21,6 +21,12 @@ export const config = {
       : 5,
   },
   shutdownTimeoutMs: Number(process.env.SHUTDOWN_TIMEOUT_MS) || 5000,
+  jwtSecret: process.env.JWT_SECRET || '',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '12h',
+  admin: {
+    username: (process.env.ADMIN_USERNAME || '').trim(),
+    password: process.env.ADMIN_PASSWORD || '',
+  },
   nodeEnv: process.env.NODE_ENV || 'development',
 };
 
@@ -31,5 +37,6 @@ export function logConfig() {
     historyLimit: config.historyLimit,
     nodeEnv: config.nodeEnv,
     mongo: config.mongoUri ? 'configured' : 'missing',
+    auth: config.jwtSecret ? 'configured' : 'missing',
   });
 }

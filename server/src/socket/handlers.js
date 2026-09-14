@@ -4,6 +4,8 @@ import { saveMessage, getRecentMessages } from '../models/Message.js';
 import { validateUsername, validateRoom, validateText } from '../utils/validate.js';
 import { addUser, removeUser, getUser, getRoomUsers, isNameTakenInRoom } from './rooms.js';
 import { consumeToken } from './rateLimit.js';
+import { findActiveBan } from '../models/Ban.js';
+import { ROLES } from '../models/User.js';
 
 const TYPING_TIMEOUT_MS = 4000;
 
@@ -52,6 +54,31 @@ export function registerHandlers(io, socket) {
     const room = validateRoom(payload.room);
     if (!room.ok) return reject(socket, respond, room.code, room.message);
 
+    if (socket.data.role === ROLES.ADMIN && socket.data.account) {
+      if (username.value.toLowerCase() !== socket.data.account.username.toLowerCase()) {
+        return reject(
+          socket,
+          respond,
+          'USERNAME_MISMATCH',
+          'Signed-in administrators must join under their own account name.',
+        );
+      }
+    }
+
+    try {
+      const ban = await findActiveBan(username.value, room.value);
+      if (ban) {
+        return reject(
+          socket,
+          respond,
+          'BANNED',
+          ban.reason ? `You are banned: ${ban.reason}` : 'You are banned from this room.',
+        );
+      }
+    } catch (error) {
+      console.error('[socket] failed to check bans', error);
+    }
+
     if (isNameTakenInRoom(room.value, username.value)) {
       return reject(
         socket,
@@ -77,6 +104,7 @@ export function registerHandlers(io, socket) {
     const joined = {
       room: room.value,
       username: username.value,
+      role: socket.data.role,
       users: getRoomUsers(room.value),
       history,
       hasMore,

@@ -39,6 +39,19 @@ export function isNameTakenInRoom(room, username) {
   return getRoomUsers(room).some((name) => name.toLowerCase() === username.toLowerCase());
 }
 
+export function getAllUsers() {
+  return [...users.entries()]
+    .map(([socketId, user]) => ({ socketId, username: user.username, room: user.room }))
+    .sort((a, b) => a.room.localeCompare(b.room) || a.username.localeCompare(b.username));
+}
+
+export function findSocketIds(username, room = null) {
+  const wanted = username.toLowerCase();
+  return [...users.entries()]
+    .filter(([, user]) => user.username.toLowerCase() === wanted && (!room || user.room === room))
+    .map(([socketId]) => socketId);
+}
+
 export function getActiveRooms() {
   return [...rooms.keys()]
     .map((room) => ({ room, users: getRoomUsers(room).length }))

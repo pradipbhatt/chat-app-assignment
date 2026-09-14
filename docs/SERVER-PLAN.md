@@ -178,6 +178,46 @@ macOS runs AirPlay Receiver (ControlCenter) on port 5000, so `listen` fails with
 `/api/rooms` is what the join screen reads to offer real rooms with occupancy
 instead of a hardcoded list.
 
+## 9a. Roles and administration
+
+Two roles: `user` and `admin`.
+
+**Regular users stay anonymous.** They type a name and join — no account, no
+password. Requiring registration would break the join flow the task is actually
+assessing, so identity for chat participants stays deliberately weak.
+
+**Admin is a separate authenticated identity.** One account is seeded from
+`ADMIN_USERNAME` / `ADMIN_PASSWORD` on boot, the password stored as a bcrypt
+hash (cost 12) and never in plain text. `POST /api/auth/login` returns a JWT;
+the client sends it as `Authorization: Bearer` on REST and as
+`socket.handshake.auth.token` on the socket.
+
+**Role is never read from a client payload.** It is derived server-side from a
+verified token in one place — the `io.use` handshake middleware — and stored on
+`socket.data.role`. A client that sends `{ role: 'admin' }` in `room:join` gets
+nothing; there is a test asserting exactly that.
+
+Admin capabilities, available over both REST and socket so the effect is
+immediate:
+
+| Action | Socket event | REST |
+|---|---|---|
+| Live overview of rooms and users | `admin:overview` | `GET /api/admin/overview` |
+| Disconnect a user | `admin:kick` | `POST /api/admin/kick` |
+| Ban (optionally per-room, optionally timed) | `admin:ban` | `POST /api/admin/ban` |
+| List / lift bans | `admin:bans` / `admin:unban` | `GET`/`DELETE /api/admin/bans` |
+| Delete one message | `admin:delete-message` | `DELETE /api/admin/messages/:id` |
+| Clear a room's history | `admin:clear-room` | `POST /api/admin/rooms/:room/clear` |
+
+Bans are checked on join and stored in MongoDB, so they outlive a restart. A
+kick only disconnects; a ban disconnects **and** prevents rejoining.
+
+Login is rate limited to 8 attempts per 10 minutes per IP.
+
+**Known limitation, deliberate:** since chat users are anonymous, a ban is on a
+*name*, not a person. Someone can rejoin under a different name. Closing that
+would require accounts for everyone, which is out of scope.
+
 ## 9b. Acknowledgements
 
 Every client event answers through a Socket.IO ack — `{ ok: true, ... }` or
@@ -206,10 +246,14 @@ SIGTERM with one client attached.
 
 ## 11. Automated tests
 
-`npm test` (Node's built-in runner) spawns the server against a separate
-`chatapp_test` database, exercises transport, rooms, isolation, roster, typing,
-validation, rate limiting, history, pagination, REST routes and shutdown, then
-drops the test database. 15 tests.
+`npm test` (Node's built-in runner) spawns the server against separate
+`chatapp_test` and `chatapp_admin_test` databases, then drops them. 24 tests
+across two files:
+
+- `test/server.test.js` — transport, rooms, isolation, roster, typing,
+  validation, rate limiting, history, pagination, REST routes, shutdown.
+- `test/admin.test.js` — login, token rejection, privilege escalation attempts,
+  kick, ban and rejoin, message deletion, room clearing, login rate limiting.
 
 The rate limit is configurable through `RATE_LIMIT_*` so the reconnect test can
 pin refill to zero — otherwise the bucket refills during the reconnect and the
