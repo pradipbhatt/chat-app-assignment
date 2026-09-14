@@ -9,12 +9,10 @@ import { validateUsername, validateRoom, normaliseRoom } from '../lib/validation
 import { readIdentity } from '../lib/identity.js';
 import { readRoomFromUrl, readKeyFromUrl } from '../lib/roomLink.js';
 import { useChat } from '../context/ChatContext.jsx';
-import { useAuth } from '../context/AuthContext.jsx';
 
 const FRIENDLY = {
   USERNAME_TAKEN: 'Someone in that room is already using this name.',
   USERNAME_RESERVED: 'That name belongs to a registered account. Pick another one.',
-  USERNAME_MISMATCH: 'Signed-in administrators must join under their account name.',
   BANNED: 'You are not able to join that room.',
   ROOM_EXPIRED: 'That private room has closed. Ask whoever shared it for a new link.',
   PASSCODE_INVALID: 'That passcode does not match this room.',
@@ -26,7 +24,7 @@ const FRIENDLY = {
 export function JoinPage() {
   const { rooms, status, refresh } = useRooms();
   const { join, createRoom, notice, dismissNotice } = useChat();
-  const { account, isAdmin, signOut } = useAuth();
+
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [remembered] = useState(readIdentity);
@@ -39,9 +37,8 @@ export function JoinPage() {
   const [serverError, setServerError] = useState(null);
   const [joining, setJoining] = useState(false);
 
-  const effectiveUsername = isAdmin ? account.username : username;
-  const privateTarget = normaliseRoom(room).startsWith('p-');
-  const needsPasscode = privateTarget && !isAdmin;
+  const effectiveUsername = username;
+  const needsPasscode = normaliseRoom(room).startsWith('p-');
   const usernameError = validateUsername(effectiveUsername);
   const roomError = validateRoom(room);
   const canSubmit =
@@ -108,13 +105,8 @@ export function JoinPage() {
               placeholder="Pradip"
               autoComplete="off"
               maxLength={24}
-              value={effectiveUsername}
-              disabled={isAdmin}
-              hint={
-                isAdmin
-                  ? 'Signed in as an administrator, so your account name is used.'
-                  : 'Visible to everyone in the room.'
-              }
+              value={username}
+              hint="Visible to everyone in the room."
               error={touched.username ? usernameError : null}
               onChange={(event) => {
                 setUsername(event.target.value);

@@ -8,6 +8,7 @@ import { PrivateReview } from '../components/PrivateReview.jsx';
 import { RoomInspector } from '../components/RoomInspector.jsx';
 import { SettingsButton } from '../components/SettingsButton.jsx';
 import { SettingsDialog } from '../components/SettingsDialog.jsx';
+import { ReviewKeyProvider } from '../context/ReviewKeyContext.jsx';
 import { connectSocket, getSocket } from '../lib/socket.js';
 
 function SignIn() {
@@ -164,7 +165,6 @@ function Dashboard() {
   }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [clearing, setClearing] = useState('');
-  const [escrowKey, setEscrowKey] = useState(null);
 
   return (
     <div className="min-h-[100dvh]">
@@ -199,7 +199,6 @@ function Dashboard() {
         <section className="rounded-panel bg-surface p-6 shadow-clay sm:p-7">
           <RoomInspector
             rooms={admin.overview.rooms}
-            escrowKey={escrowKey}
             onKick={(username, room, reason) => admin.kick(username, room, reason)}
             onBan={(username, room, reason) => admin.ban(username, room, reason, null)}
             onClear={(room) => admin.clearRoom(room)}
@@ -284,7 +283,7 @@ function Dashboard() {
         </section>
 
         <section className="rounded-panel bg-surface p-6 shadow-clay sm:p-7">
-          <PrivateReview open onUnlocked={setEscrowKey} />
+          <PrivateReview open />
 
           <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
             Active bans
@@ -335,5 +334,11 @@ export function AdminDashboard() {
     );
   }
 
-  return isAdmin ? <Dashboard /> : <SignIn />;
+  return isAdmin ? (
+    <ReviewKeyProvider>
+      <Dashboard />
+    </ReviewKeyProvider>
+  ) : (
+    <SignIn />
+  );
 }

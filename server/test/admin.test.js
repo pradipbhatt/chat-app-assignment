@@ -251,10 +251,11 @@ test('the signed-in admin can still join under their own name and is badged', as
   assert.equal(entry.role, 'admin');
 });
 
-test('a signed-in admin cannot join under someone else name', async () => {
+test('a signed-in admin may join chat under any free name', async () => {
   const admin = client({ token });
   const attempt = await join(admin, 'NotTheAdmin', room());
-  assert.equal(attempt.code, 'USERNAME_MISMATCH');
+  assert.equal(attempt.ok, true);
+  assert.equal(attempt.role, 'admin');
 });
 
 test('a registered account cannot be kicked or banned, even by an administrator', async () => {

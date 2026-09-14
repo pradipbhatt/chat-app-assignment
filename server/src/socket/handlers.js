@@ -150,17 +150,6 @@ export function registerHandlers(io, socket) {
       );
     }
 
-    if (socket.data.account && claimedName !== accountName) {
-      return finish(
-        reject(
-          socket,
-          respond,
-          'USERNAME_MISMATCH',
-          'Signed-in administrators must join under their own account name.',
-        ),
-      );
-    }
-
     try {
       const ban =
         socket.data.role === ROLES.ADMIN ? null : await findActiveBan(username.value, room.value);

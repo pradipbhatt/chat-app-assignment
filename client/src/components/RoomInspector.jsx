@@ -6,9 +6,12 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { MessageList } from './MessageList.jsx';
 import { UserList } from './UserList.jsx';
 import { Notice } from './Notice.jsx';
+import { UnlockReview } from './UnlockReview.jsx';
+import { useReviewKey } from '../context/ReviewKeyContext.jsx';
 
-export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
+export function RoomInspector({ rooms, onKick, onBan, onClear }) {
   const { token, account } = useAuth();
+  const { key: escrowKey, status: keyStatus } = useReviewKey();
   const [selected, setSelected] = useState('');
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
@@ -157,11 +160,20 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
 
       {selected && state !== 'error' && (
         <>
-          {isPrivate && !roomKey.current && (
-            <Notice tone="warning">
-              This room is encrypted and no key is open, so the conversation stays unreadable.
-              Unlock the review key below.
-            </Notice>
+          {isPrivate && !roomKey.current && state === 'ready' && (
+            <div className="rounded-clay bg-warning/12 p-4 shadow-clay-in">
+              <p className="text-sm font-bold text-warning">This room is encrypted</p>
+              <p className="mt-0.5 text-xs text-warning/90">
+                {keyStatus === 'absent'
+                  ? 'No review key has been created, so nobody can read this room.'
+                  : 'Unlock the review key to read it here.'}
+              </p>
+              {keyStatus !== 'absent' && (
+                <div className="mt-3">
+                  <UnlockReview compact />
+                </div>
+              )}
+            </div>
           )}
 
           <div className="flex h-[28rem] overflow-hidden rounded-panel bg-bg shadow-clay-in">

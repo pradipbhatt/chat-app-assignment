@@ -1,70 +1,33 @@
-import { useCallback, useEffect, useState } from 'react';
-import { TextField } from './TextField.jsx';
+import { useEffect, useState } from 'react';
 import { Notice } from './Notice.jsx';
 import { EscrowSetup } from './EscrowSetup.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { decryptText, isEnvelope } from '../lib/crypto.js';
-import {
-  getEscrowVault,
-  listPrivateRooms,
-  readPrivateRoom,
-  unlockEscrowKey,
-  unwrapRoomKey,
-} from '../lib/escrowBridge.js';
+import { listPrivateRooms, readPrivateRoom, unwrapRoomKey } from '../lib/escrowBridge.js';
+import { useReviewKey } from '../context/ReviewKeyContext.jsx';
+import { UnlockReview } from './UnlockReview.jsx';
 import { formatTime } from '../lib/format.js';
 
-export function PrivateReview({ open, onUnlocked }) {
+export function PrivateReview({ open }) {
   const { token } = useAuth();
-  const [stage, setStage] = useState('checking');
-  const [vault, setVault] = useState(null);
-  const [passphrase, setPassphrase] = useState('');
-  const [privateKey, setPrivateKey] = useState(null);
+  const { key: privateKey, status: keyStatus, refresh } = useReviewKey();
   const [rooms, setRooms] = useState([]);
   const [transcript, setTranscript] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const check = useCallback(async () => {
-    setStage('checking');
-    try {
-      const data = await getEscrowVault(token);
-      setVault(data.vault);
-      setStage('locked');
-    } catch (requestError) {
-      setStage(requestError.code === 'NO_ESCROW' ? 'absent' : 'error');
-      setError(requestError.code === 'NO_ESCROW' ? null : requestError.message);
-    }
-  }, [token]);
-
   useEffect(() => {
-    if (open) check();
-  }, [open, check]);
+    if (!open || keyStatus !== 'open') return;
 
-  const unlock = async () => {
-    setBusy(true);
-    setError(null);
+    let active = true;
+    listPrivateRooms(token)
+      .then((data) => active && setRooms(data.rooms ?? []))
+      .catch((requestError) => active && setError(requestError.message));
 
-    const key = await unlockEscrowKey(vault, passphrase);
-    if (!key) {
-      setError('That passphrase did not open the key.');
-      setBusy(false);
-      return;
-    }
-
-    setPrivateKey(key);
-    setPassphrase('');
-    onUnlocked?.(key);
-
-    try {
-      const data = await listPrivateRooms(token);
-      setRooms(data.rooms ?? []);
-      setStage('open');
-    } catch (requestError) {
-      setError(requestError.message);
-    }
-
-    setBusy(false);
-  };
+    return () => {
+      active = false;
+    };
+  }, [open, keyStatus, token]);
 
   const readRoom = async (room) => {
     setBusy(true);
@@ -110,42 +73,23 @@ export function PrivateReview({ open, onUnlocked }) {
         Private room review
       </h3>
 
-      {stage === 'checking' && <p className="text-xs text-fg-subtle">Checking for a review key…</p>}
+      {keyStatus === 'checking' && (
+        <p className="text-xs text-fg-subtle">Checking for a review key…</p>
+      )}
 
-      {stage === 'absent' && (
+      {keyStatus === 'absent' && (
         <>
           <p className="text-xs text-fg-muted">
             No review key exists yet. Until one does, private rooms cannot be read by anyone but
             their members — including you.
           </p>
-          <EscrowSetup onDone={check} />
+          <EscrowSetup onDone={refresh} />
         </>
       )}
 
-      {stage === 'locked' && (
-        <>
-          <TextField
-            id="review-passphrase"
-            label="Review passphrase"
-            type="password"
-            autoComplete="off"
-            value={passphrase}
-            hint="Typed here only. It never leaves this browser."
-            onChange={(event) => setPassphrase(event.target.value)}
-          />
-          {error && <Notice tone="danger">{error}</Notice>}
-          <button
-            type="button"
-            onClick={unlock}
-            disabled={busy || passphrase.length < 8}
-            className="w-full rounded-full bg-accent px-4 py-2.5 font-display text-sm font-bold text-accent-fg shadow-clay-accent disabled:opacity-50"
-          >
-            {busy ? 'Opening…' : 'Unlock private rooms'}
-          </button>
-        </>
-      )}
+      {keyStatus === 'locked' && <UnlockReview />}
 
-      {stage === 'open' && (
+      {keyStatus === 'open' && (
         <>
           {error && <Notice tone="danger">{error}</Notice>}
 
