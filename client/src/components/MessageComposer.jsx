@@ -7,7 +7,7 @@ export function MessageComposer({ onSend, onTyping, typingUsers, disabled, disab
   const submit = (event) => {
     event.preventDefault();
     const value = text.trim();
-    if (!value || disabled) return;
+    if (!value) return;
     setText('');
     onSend(value);
   };
@@ -29,21 +29,24 @@ export function MessageComposer({ onSend, onTyping, typingUsers, disabled, disab
             id="composer"
             value={text}
             onChange={change}
-            disabled={disabled}
             maxLength={2000}
             autoComplete="off"
-            placeholder={disabled ? disabledReason : 'Write a message'}
+            placeholder={disabled ? 'Offline — messages will queue' : 'Write a message'}
             className="flex-1 rounded-full bg-elevated px-4.5 py-3 text-sm text-fg shadow-clay-in placeholder:text-fg-subtle disabled:cursor-not-allowed disabled:opacity-60"
           />
           <button
             type="submit"
-            disabled={disabled || text.trim().length === 0}
+            disabled={text.trim().length === 0}
             className="rounded-full bg-accent px-5 py-3 font-display text-sm font-bold text-accent-fg shadow-clay-accent transition-transform hover:-translate-y-0.5 active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Send
           </button>
         </form>
-        {disabled && <p className="mt-2 text-xs text-warning">{disabledReason}</p>}
+        {disabled && (
+          <p className="mt-2 text-xs text-warning">
+            {disabledReason} They will send as soon as it returns.
+          </p>
+        )}
       </div>
     </div>
   );

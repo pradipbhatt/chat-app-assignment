@@ -11,6 +11,7 @@ import { Notice } from '../components/Notice.jsx';
 import { AdminPanel } from '../components/AdminPanel.jsx';
 import { SlideOver } from '../components/SlideOver.jsx';
 import { emitWithAck } from '../lib/socket.js';
+import { useMediaQuery } from '../hooks/useMediaQuery.js';
 
 export function ChatPage() {
   const {
@@ -36,6 +37,7 @@ export function ChatPage() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const wideScreen = useMediaQuery('(min-width: 768px)');
 
   const offline = connection !== 'connected';
   const canModerate = isAdmin && session.role === 'admin';
@@ -131,10 +133,8 @@ export function ChatPage() {
           />
         </section>
 
-        {canModerate && panelOpen && (
-          <div className="hidden md:flex">
-            <AdminPanel open onClose={() => setPanelOpen(false)} room={session.room} />
-          </div>
+        {canModerate && panelOpen && wideScreen && (
+          <AdminPanel open onClose={() => setPanelOpen(false)} room={session.room} />
         )}
       </div>
 
@@ -144,7 +144,7 @@ export function ChatPage() {
 
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      {canModerate && (
+      {canModerate && !wideScreen && (
         <SlideOver open={panelOpen} onClose={() => setPanelOpen(false)} title="Moderation">
           <AdminPanel open onClose={() => setPanelOpen(false)} room={session.room} embedded />
         </SlideOver>

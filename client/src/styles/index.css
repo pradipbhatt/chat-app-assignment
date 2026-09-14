@@ -25,6 +25,31 @@
   :focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-bg;
   }
+
+  input[type='color'] {
+    -webkit-appearance: none;
+    appearance: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+
+  input[type='color']::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+
+  input[type='color']::-webkit-color-swatch {
+    border: 0;
+    border-radius: 9999px;
+  }
+
+  input[type='color']::-moz-color-swatch {
+    border: 0;
+    border-radius: 9999px;
+  }
 }
 
 @layer utilities {

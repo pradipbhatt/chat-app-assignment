@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Notice } from './Notice.jsx';
+import { ColorField } from './ColorField.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   THEME_TOKENS,
-  hexToTriple,
-  tripleToHex,
   readCurrentTokens,
   customThemeId,
   checkContrast,
@@ -116,39 +115,18 @@ export function ThemeEditor({ editing, onDone }) {
           </h4>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {tokens.map((item) => (
-              <label
+              <ColorField
                 key={item.key}
-                className="flex items-center gap-2.5 rounded-clay bg-elevated px-2.5 py-2 shadow-clay-in"
-              >
-                <input
-                  type="color"
-                  aria-label={item.label}
-                  value={tripleToHex(colors[item.key])}
-                  onChange={(event) =>
-                    setColors((current) => ({
-                      ...current,
-                      [item.key]: hexToTriple(event.target.value),
-                    }))
-                  }
-                  className="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
-                />
-                <span className="truncate text-xs font-bold">{item.label}</span>
-              </label>
+                label={item.label}
+                value={colors[item.key]}
+                onChange={(next) => setColors((current) => ({ ...current, [item.key]: next }))}
+              />
             ))}
           </div>
         </div>
       ))}
 
-      <label className="flex items-center gap-2.5 rounded-clay bg-elevated px-2.5 py-2 shadow-clay-in">
-        <input
-          type="color"
-          aria-label="Shadow tint"
-          value={tripleToHex(shadowTint)}
-          onChange={(event) => setShadowTint(hexToTriple(event.target.value))}
-          className="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
-        />
-        <span className="text-xs font-bold">Shadow tint</span>
-      </label>
+      <ColorField label="Shadow tint" value={shadowTint} onChange={setShadowTint} />
 
       <div className="rounded-panel p-4 shadow-clay-in" style={preview}>
         <p className="font-display text-sm font-extrabold">Preview</p>

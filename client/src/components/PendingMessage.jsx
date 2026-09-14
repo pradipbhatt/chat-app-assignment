@@ -1,5 +1,6 @@
 export function PendingMessage({ entry, onRetry, onDiscard }) {
   const failed = entry.status === 'failed';
+  const queued = entry.status === 'queued';
 
   return (
     <li className="flex flex-row-reverse gap-2.5">
@@ -32,7 +33,9 @@ export function PendingMessage({ entry, onRetry, onDiscard }) {
             </button>
           </div>
         ) : (
-          <span className="px-1 text-[11px] text-fg-subtle">Sending…</span>
+          <span className="px-1 text-[11px] text-fg-subtle">
+            {queued ? 'Queued' : 'Sending…'}
+          </span>
         )}
       </div>
     </li>

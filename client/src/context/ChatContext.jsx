@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { getSocket, connectSocket, emitWithAck } from '../lib/socket.js';
+import { createTokenBucket, sleep, OUTBOX_LIMITS } from '../lib/outbox.js';
 import { normaliseRoom } from '../lib/validation.js';
 
 const ChatContext = createContext(null);
@@ -30,6 +31,10 @@ export function ChatProvider({ children }) {
   const noticeTimer = useRef(null);
   const typingSent = useRef(false);
   const typingTimer = useRef(null);
+  const outbox = useRef([]);
+  const draining = useRef(false);
+  const drainRef = useRef(null);
+  const bucket = useRef(createTokenBucket());
 
   const showNotice = useCallback((tone, message) => {
     setNotice({ tone, message, at: Date.now() });
@@ -42,6 +47,7 @@ export function ChatProvider({ children }) {
 
     const onConnect = () => {
       setConnection('connected');
+      drainRef.current?.();
       if (lastJoin.current) {
         socket.emit('room:join', lastJoin.current, (response) => {
           if (response?.ok) {
@@ -84,7 +90,11 @@ export function ChatProvider({ children }) {
       setUsers([]);
       showNotice('danger', payload.reason ? `Removed: ${payload.reason}` : 'You were removed.');
     };
-    const onAppError = (payload) => showNotice('danger', payload.message);
+    const QUEUE_HANDLED = new Set(['RATE_LIMITED', 'TIMEOUT']);
+    const onAppError = (payload) => {
+      if (QUEUE_HANDLED.has(payload.code)) return;
+      showNotice('danger', payload.message);
+    };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -134,6 +144,7 @@ export function ChatProvider({ children }) {
     setHasMore(Boolean(response.hasMore));
     setRoomCleared(false);
     setTypingUsers([]);
+    outbox.current = [];
     setPending([]);
     setConnection('connected');
 
@@ -164,57 +175,100 @@ export function ChatProvider({ children }) {
     typingTimer.current = setTimeout(stopTyping, 1800);
   }, [stopTyping]);
 
-  const send = useCallback(
-    async (text) => {
-      const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      setPending((current) => [...current, { tempId, text, status: 'sending' }]);
-      stopTyping();
-
-      const response = await emitWithAck('message:send', { text });
-
-      if (response.ok) {
-        setPending((current) => current.filter((entry) => entry.tempId !== tempId));
-        return response;
-      }
-
-      setPending((current) =>
-        current.map((entry) =>
-          entry.tempId === tempId
-            ? { ...entry, status: 'failed', reason: response.message }
-            : entry,
-        ),
-      );
-      return response;
-    },
-    [stopTyping],
-  );
-
-  const retryPending = useCallback(async (tempId) => {
-    let text = null;
+  const markPending = useCallback((tempId, changes) => {
     setPending((current) =>
-      current.map((entry) => {
-        if (entry.tempId !== tempId) return entry;
-        text = entry.text;
-        return { ...entry, status: 'sending', reason: undefined };
-      }),
-    );
-
-    if (!text) return;
-
-    const response = await emitWithAck('message:send', { text });
-
-    setPending((current) =>
-      response.ok
-        ? current.filter((entry) => entry.tempId !== tempId)
-        : current.map((entry) =>
-            entry.tempId === tempId
-              ? { ...entry, status: 'failed', reason: response.message }
-              : entry,
-          ),
+      current.map((entry) => (entry.tempId === tempId ? { ...entry, ...changes } : entry)),
     );
   }, []);
 
+  const drain = useCallback(async () => {
+    if (draining.current) return;
+    draining.current = true;
+
+    while (outbox.current.length > 0) {
+      const item = outbox.current[0];
+
+      if (!getSocket().connected) {
+        markPending(item.tempId, { status: 'queued', reason: undefined });
+        await sleep(OUTBOX_LIMITS.offlinePollMs);
+        continue;
+      }
+
+      const wait = bucket.current.waitMs();
+      if (wait > 0) {
+        markPending(item.tempId, { status: 'queued' });
+        await sleep(wait);
+        continue;
+      }
+
+      bucket.current.take();
+      item.attempts += 1;
+      markPending(item.tempId, { status: 'sending' });
+
+      const response = await emitWithAck('message:send', { text: item.text });
+
+      if (response.ok) {
+        outbox.current.shift();
+        setPending((current) => current.filter((entry) => entry.tempId !== item.tempId));
+        continue;
+      }
+
+      if (response.code === 'RATE_LIMITED' && item.attempts < OUTBOX_LIMITS.maxAttempts) {
+        bucket.current.drain();
+        markPending(item.tempId, { status: 'queued' });
+        await sleep(OUTBOX_LIMITS.refusalBackoffMs);
+        continue;
+      }
+
+      if (response.code === 'TIMEOUT' && item.attempts < OUTBOX_LIMITS.maxAttempts) {
+        markPending(item.tempId, { status: 'queued' });
+        await sleep(OUTBOX_LIMITS.refusalBackoffMs);
+        continue;
+      }
+
+      outbox.current.shift();
+      markPending(item.tempId, { status: 'failed', reason: response.message });
+    }
+
+    draining.current = false;
+  }, [markPending]);
+
+  useEffect(() => {
+    drainRef.current = drain;
+  }, [drain]);
+
+  const send = useCallback(
+    (text) => {
+      const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      setPending((current) => [...current, { tempId, text, status: 'queued' }]);
+      outbox.current.push({ tempId, text, attempts: 0 });
+      stopTyping();
+      drain();
+      return { ok: true, queued: true };
+    },
+    [stopTyping, drain],
+  );
+
+  const retryPending = useCallback(
+    (tempId) => {
+      let text = null;
+      setPending((current) =>
+        current.map((entry) => {
+          if (entry.tempId !== tempId) return entry;
+          text = entry.text;
+          return { ...entry, status: 'queued', reason: undefined };
+        }),
+      );
+
+      if (!text) return;
+      outbox.current.push({ tempId, text, attempts: 0 });
+      drain();
+    },
+    [drain],
+  );
+
   const discardPending = useCallback((tempId) => {
+    outbox.current = outbox.current.filter((entry) => entry.tempId !== tempId);
     setPending((current) => current.filter((entry) => entry.tempId !== tempId));
   }, []);
 
@@ -243,6 +297,7 @@ export function ChatProvider({ children }) {
     socket.emit('room:leave');
     socket.disconnect();
     lastJoin.current = null;
+    outbox.current = [];
     setSession(null);
     setMessages([]);
     setUsers([]);
