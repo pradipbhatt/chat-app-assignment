@@ -55,10 +55,16 @@ export function ChatPage() {
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
             {privateRoom && (
               <span
-                title="Only people with the link can join. Nothing here is stored."
-                className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fg-muted shadow-clay-in"
+                title={
+                  privateRoom.encrypted
+                    ? 'End to end encrypted. The server stores ciphertext it cannot read.'
+                    : 'Private, but this tab has no key so messages cannot be read.'
+                }
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide shadow-clay-in ${
+                  privateRoom.encrypted ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'
+                }`}
               >
-                private
+                {privateRoom.encrypted ? 'encrypted' : 'no key'}
               </span>
             )}
             <span className="truncate text-xs text-fg-muted">{session.username}</span>
@@ -73,7 +79,11 @@ export function ChatPage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <ShareRoom room={session.room} passcode={privateRoom?.passcode ?? null} />
+          <ShareRoom
+            room={session.room}
+            passcode={privateRoom?.passcode ?? null}
+            secret={privateRoom?.secret ?? null}
+          />
 
           <button
             type="button"
@@ -118,8 +128,9 @@ export function ChatPage() {
       {privateRoom && messages.length === 0 && (
         <div className="px-4 pt-3 sm:px-6">
           <Notice tone="info">
-            Private room — joining needs both the link and the passcode, which you can copy from
-            Invite. Messages are not stored, and the room closes once everyone leaves.
+            Private room — messages are encrypted in your browser, so the server only ever holds
+            ciphertext. Send someone the full invite link and the passcode from Invite. Nothing is
+            stored, and the room closes once everyone leaves.
           </Notice>
         </div>
       )}

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { config } from '../config/env.js';
 import { saveMessage, getRecentMessages } from '../models/Message.js';
-import { validateUsername, validateRoom, validateText } from '../utils/validate.js';
+import { validateUsername, validateRoom, validateText, LIMITS } from '../utils/validate.js';
 import { addUser, removeUser, getUser, getRoomUsers, isNameTakenInRoom } from './rooms.js';
 import { consumeToken } from './rateLimit.js';
 import { findActiveBan } from '../models/Ban.js';
@@ -227,12 +227,13 @@ export function registerHandlers(io, socket) {
       return reject(socket, respond, 'RATE_LIMITED', 'You are sending messages too quickly.');
     }
 
-    const text = validateText(payload.text);
+    const encrypted = isPrivateName(user.room);
+    const text = validateText(payload.text, encrypted ? LIMITS.encrypted.max : LIMITS.text.max);
     if (!text.ok) return reject(socket, respond, text.code, text.message);
 
     stopTyping();
 
-    if (isPrivateName(user.room)) {
+    if (encrypted) {
       const message = appendMessage(user.room, { username: user.username, text: text.value });
       if (!message) {
         return reject(socket, respond, 'ROOM_EXPIRED', 'That private room has closed.');

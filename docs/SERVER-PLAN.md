@@ -185,6 +185,43 @@ A room whose name starts with `p-` is private. It is created through
 characters — and that slug is the only key: anyone holding the link can enter,
 anyone without it cannot, and guessing one is not practical.
 
+### End to end encryption
+
+Message content in a private room is encrypted in the browser with AES-GCM 256
+and only ever reaches the server as ciphertext. The server stores and relays an
+envelope it cannot read, and an administrator who joins the room sees the same
+envelope.
+
+**The key travels in the URL fragment** (`/r/<room>#k=<key>`). A fragment is
+never sent to a server by any browser, so the key is not in the request line,
+the access log, or any proxy in between. That is the whole reason it lives there
+rather than being derived from the passcode: the server *verifies* the passcode,
+so anything derived from the passcode would be derivable by the server too.
+
+The two halves of an invite do different jobs, and both are needed:
+
+| Part | Job | Who checks it |
+|---|---|---|
+| Passcode | who may enter the room | the server |
+| Key in the link fragment | who can read what is said | nobody — only the browser holds it |
+
+Someone with the passcode but a link stripped of its fragment joins the room and
+sees every message as `Encrypted — you do not have the key`. The interface warns
+them before they join and badges the room `no key` rather than pretending.
+
+**What this does not cover, stated plainly:**
+
+- **Only private rooms.** Public rooms have no shared secret and stay plaintext.
+- **Not metadata.** Usernames, room names, message timing and who is present are
+  all visible to the server; the roster and moderation depend on them.
+- **Not an active server operator.** The browser runs JavaScript the server
+  itself delivered, so anyone who can change what the server serves could serve
+  a version that leaks the key. Browser-delivered encryption protects stored and
+  relayed data against the operator — it cannot protect against one who tampers
+  with the application. Claiming otherwise would be dishonest.
+
+### Passcodes
+
 Entry needs **two things**: the link and a six character passcode issued with
 it. A link can be forwarded, screenshotted or logged by a chat client without
 its owner noticing, so the link alone is treated as a weak secret. The passcode

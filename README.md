@@ -31,9 +31,13 @@ The sections below describe what actually works today.
 - Pick a display name and a room, and start talking — no sign-up
 - Start a private room in one tap and share its link; anyone who opens
   `/r/<room>` lands on a join screen for that room with only a name to fill in
-- Private rooms are unlisted and unguessable, need a passcode as well as the
-  link, keep nothing in the database, and close themselves a few hours later or
-  shortly after everyone leaves
+- Private rooms are end to end encrypted: messages are encrypted in the browser
+  and the server only ever holds ciphertext, so an administrator reading the
+  stored data sees nothing usable
+- The decryption key travels in the link fragment, which browsers never send to
+  a server; the passcode controls who may enter, the key controls who can read
+- Private rooms are unlisted and unguessable, keep nothing in the database, and
+  close themselves a few hours later or shortly after everyone leaves
 - Rooms on the join screen show live occupancy, not a hardcoded list
 - Messages arrive instantly in every window in that room
 - See who is present, and who is typing

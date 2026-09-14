@@ -30,26 +30,36 @@ export function readRoomFromUrl() {
   return validateRoom(room) === null ? room : '';
 }
 
-export function roomUrl(room) {
+export function roomUrl(room, secret = null) {
   if (typeof window === 'undefined') return '';
-  return `${window.location.origin}/r/${encodeURIComponent(normaliseRoom(room))}`;
+  const base = `${window.location.origin}/r/${encodeURIComponent(normaliseRoom(room))}`;
+  return secret ? `${base}#k=${secret}` : base;
 }
 
-export function showRoomInUrl(room) {
+export function readKeyFromUrl() {
+  if (typeof window === 'undefined') return '';
+  const match = window.location.hash.match(/(?:^#|&)k=([A-Za-z0-9_-]+)/);
+  return match ? match[1] : '';
+}
+
+export function showRoomInUrl(room, secret = null) {
   if (typeof window === 'undefined') return;
-  const next = `/r/${encodeURIComponent(normaliseRoom(room))}`;
-  if (window.location.pathname !== next) {
+  const path = `/r/${encodeURIComponent(normaliseRoom(room))}`;
+  const next = secret ? `${path}#k=${secret}` : path;
+  if (window.location.pathname + window.location.hash !== next) {
     window.history.replaceState({}, '', next);
   }
 }
 
 export function clearRoomFromUrl() {
   if (typeof window === 'undefined') return;
-  if (window.location.pathname !== '/') window.history.replaceState({}, '', '/');
+  if (window.location.pathname !== '/' || window.location.hash) {
+    window.history.replaceState({}, '', '/');
+  }
 }
 
-export async function copyRoomLink(room) {
-  const url = roomUrl(room);
+export async function copyRoomLink(room, secret = null) {
+  const url = roomUrl(room, secret);
   try {
     await navigator.clipboard.writeText(url);
     return { ok: true, url };

@@ -7,7 +7,7 @@ import { SettingsDialog } from '../components/SettingsDialog.jsx';
 import { useRooms } from '../hooks/useRooms.js';
 import { validateUsername, validateRoom, normaliseRoom } from '../lib/validation.js';
 import { readIdentity } from '../lib/identity.js';
-import { readRoomFromUrl } from '../lib/roomLink.js';
+import { readRoomFromUrl, readKeyFromUrl } from '../lib/roomLink.js';
 import { useChat } from '../context/ChatContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { AdminSignInDialog } from '../components/AdminSignInDialog.jsx';
@@ -33,6 +33,7 @@ export function JoinPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [remembered] = useState(readIdentity);
   const [invitedRoom] = useState(readRoomFromUrl);
+  const [invitedKey] = useState(readKeyFromUrl);
   const [username, setUsername] = useState(remembered.username);
   const [room, setRoom] = useState(invitedRoom || remembered.room);
   const [passcode, setPasscode] = useState('');
@@ -183,6 +184,13 @@ export function JoinPage() {
                 onBlur={() => setTouched((state) => ({ ...state, room: true }))}
               />
             </div>
+
+            {needsPasscode && !invitedKey && (
+              <Notice tone="warning">
+                This link has no decryption key. You can still join, but messages will stay
+                unreadable — ask for the full invite link.
+              </Notice>
+            )}
 
             {needsPasscode && (
               <TextField

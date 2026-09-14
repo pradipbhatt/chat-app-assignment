@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { roomUrl } from '../lib/roomLink.js';
 
-export function ShareRoom({ room, passcode = null }) {
+export function ShareRoom({ room, passcode = null, secret = null }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState('');
 
@@ -11,7 +11,7 @@ export function ShareRoom({ room, passcode = null }) {
     return () => clearTimeout(timer);
   }, [copied]);
 
-  const url = roomUrl(room);
+  const url = roomUrl(room, secret);
   const invite = passcode ? `${url}\nPasscode: ${passcode}` : url;
 
   const copy = async (value, key) => {
@@ -41,7 +41,7 @@ export function ShareRoom({ room, passcode = null }) {
           <h2 className="font-display text-base font-extrabold">Invite to #{room}</h2>
           <p className="mt-0.5 text-xs text-fg-muted">
             {passcode
-              ? 'Both parts are needed — send the link and the passcode together.'
+              ? 'Both parts are needed — send the link and the passcode together. The link carries the decryption key, which never reaches the server.'
               : 'Anyone with this link can join.'}
           </p>
 

@@ -2,6 +2,7 @@ export const LIMITS = {
   username: { min: 1, max: 24 },
   room: { min: 1, max: 32 },
   text: { min: 1, max: 2000 },
+  encrypted: { min: 1, max: 6000 },
 };
 
 const fail = (code, message) => ({ ok: false, code, message });
@@ -26,12 +27,12 @@ export function validateRoom(input) {
   return { ok: true, value };
 }
 
-export function validateText(input) {
+export function validateText(input, max = LIMITS.text.max) {
   if (typeof input !== 'string') return fail('MESSAGE_INVALID', 'Message is required.');
   const value = input.trim();
   if (value.length < LIMITS.text.min) return fail('MESSAGE_EMPTY', 'Message is empty.');
-  if (value.length > LIMITS.text.max)
-    return fail('MESSAGE_TOO_LONG', `Message must be ${LIMITS.text.max} characters or fewer.`);
+  if (value.length > max)
+    return fail('MESSAGE_TOO_LONG', `Message must be ${max} characters or fewer.`);
   return { ok: true, value };
 }
 

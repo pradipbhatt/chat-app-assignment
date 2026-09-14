@@ -11,7 +11,15 @@ import { getSocket, connectSocket, emitWithAck } from '../lib/socket.js';
 import { createTokenBucket, sleep, OUTBOX_LIMITS } from '../lib/outbox.js';
 import { normaliseRoom } from '../lib/validation.js';
 import { rememberIdentity } from '../lib/identity.js';
-import { showRoomInUrl, clearRoomFromUrl } from '../lib/roomLink.js';
+import { showRoomInUrl, clearRoomFromUrl, readKeyFromUrl } from '../lib/roomLink.js';
+import {
+  generateRoomKey,
+  importRoomKey,
+  encryptText,
+  decryptText,
+  isEnvelope,
+  cryptoAvailable,
+} from '../lib/crypto.js';
 
 const ChatContext = createContext(null);
 
@@ -29,6 +37,8 @@ export function ChatProvider({ children }) {
   const [hasMore, setHasMore] = useState(false);
   const [roomCleared, setRoomCleared] = useState(false);
   const [privateRoom, setPrivateRoom] = useState(null);
+  const roomKey = useRef(null);
+  const roomSecret = useRef('');
   const [loadingOlder, setLoadingOlder] = useState(false);
 
   const lastJoin = useRef(null);
@@ -40,6 +50,14 @@ export function ChatProvider({ children }) {
   const drainRef = useRef(null);
   const joining = useRef(false);
   const bucket = useRef(createTokenBucket());
+
+  const toReadable = useCallback(async (message) => {
+    if (message.system || !isEnvelope(message.text)) return message;
+    if (!roomKey.current) return { ...message, text: null, locked: true };
+
+    const plain = await decryptText(roomKey.current, message.text);
+    return plain === null ? { ...message, text: null, locked: true } : { ...message, text: plain };
+  }, []);
 
   const showNotice = useCallback((tone, message) => {
     setNotice({ tone, message, at: Date.now() });
@@ -77,9 +95,10 @@ export function ChatProvider({ children }) {
       setUnreachable(describeOutage());
       setConnection('connecting');
     };
-    const onMessage = (message) => {
+    const onMessage = async (message) => {
       setRoomCleared(false);
-      setMessages((current) => [...current, message]);
+      const readable = await toReadable(message);
+      setMessages((current) => [...current, readable]);
       if (!message.system) {
         setTypingUsers((current) => current.filter((name) => name !== message.username));
       }
@@ -153,6 +172,14 @@ export function ChatProvider({ children }) {
       passcode: String(passcode || '').trim().toUpperCase(),
     };
 
+    if (normaliseRoom(room).startsWith('p-') && !roomKey.current) {
+      const fromLink = readKeyFromUrl();
+      if (fromLink) {
+        roomKey.current = await importRoomKey(fromLink);
+        roomSecret.current = roomKey.current ? fromLink : '';
+      }
+    }
+
     setConnection('connecting');
     connectSocket();
 
@@ -166,14 +193,21 @@ export function ChatProvider({ children }) {
     }
 
     rememberIdentity({ username: payload.username, room: payload.room });
-    showRoomInUrl(response.room);
+    showRoomInUrl(response.room, roomSecret.current || null);
 
     lastJoin.current = payload;
     setSession({ room: response.room, username: response.username, role: response.role });
     setPrivateRoom(
-      response.private ? { expiresAt: response.expiresAt, passcode: response.passcode } : null,
+      response.private
+        ? {
+            expiresAt: response.expiresAt,
+            passcode: response.passcode,
+            secret: roomSecret.current,
+            encrypted: Boolean(roomKey.current),
+          }
+        : null,
     );
-    setMessages(response.history ?? []);
+    setMessages(await Promise.all((response.history ?? []).map(toReadable)));
     setUsers(response.users ?? []);
     setHasMore(Boolean(response.hasMore));
     setRoomCleared(false);
@@ -239,7 +273,18 @@ export function ChatProvider({ children }) {
       item.attempts += 1;
       markPending(item.tempId, { status: 'sending' });
 
-      const response = await emitWithAck('message:send', { text: item.text });
+      let wire = item.text;
+      if (roomKey.current) {
+        try {
+          wire = await encryptText(roomKey.current, item.text);
+        } catch (error) {
+          outbox.current.shift();
+          markPending(item.tempId, { status: 'failed', reason: 'Could not encrypt that message.' });
+          continue;
+        }
+      }
+
+      const response = await emitWithAck('message:send', { text: wire });
 
       if (response.ok) {
         outbox.current.shift();
@@ -289,7 +334,7 @@ export function ChatProvider({ children }) {
       window.removeEventListener('pagehide', onPageHide);
       window.removeEventListener('pageshow', onPageShow);
     };
-  }, []);
+  }, [toReadable]);
 
   const send = useCallback(
     (text) => {
@@ -341,14 +386,28 @@ export function ChatProvider({ children }) {
       return null;
     }
 
-    setMessages((current) => [...response.messages, ...current]);
+    const readable = await Promise.all(response.messages.map(toReadable));
+    setMessages((current) => [...readable, ...current]);
     setHasMore(Boolean(response.hasMore));
     return response;
-  }, [loadingOlder, messages, showNotice]);
+  }, [loadingOlder, messages, showNotice, toReadable]);
 
   const createRoom = useCallback(async (username) => {
+    if (!cryptoAvailable()) {
+      return { ok: false, code: 'NO_CRYPTO', message: 'This browser cannot encrypt messages.' };
+    }
+
     connectSocket();
-    return emitWithAck('room:create', { username: String(username || 'guest').trim() });
+    const response = await emitWithAck('room:create', {
+      username: String(username || 'guest').trim(),
+    });
+    if (!response.ok) return response;
+
+    const generated = await generateRoomKey();
+    roomKey.current = generated.key;
+    roomSecret.current = generated.secret;
+
+    return { ...response, secret: generated.secret };
   }, []);
 
   const leave = useCallback(() => {
@@ -357,6 +416,8 @@ export function ChatProvider({ children }) {
     socket.disconnect();
     lastJoin.current = null;
     outbox.current = [];
+    roomKey.current = null;
+    roomSecret.current = '';
     clearRoomFromUrl();
     setSession(null);
     setPrivateRoom(null);
