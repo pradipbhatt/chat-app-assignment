@@ -50,9 +50,9 @@ binding a port, and `handlers.js` stays a pure list of event → behaviour.
 ## 3. Dependencies
 
 Runtime: `express`, `socket.io`, `cors`, `dotenv`
-Dev: `nodemon`
+Dev: none — Node 20's built-in `node --watch` replaces `nodemon`
 
-Scripts: `dev` → `nodemon src/server.js`, `start` → `node src/server.js`.
+Scripts: `dev` → `node --watch src/server.js`, `start` → `node src/server.js`.
 
 ESM (`"type": "module"`) to match the Vite client and avoid mixed module styles.
 
@@ -134,11 +134,17 @@ Netlify origin is a config change, not a code change.
 `.env.example` (committed) / `.env` (git-ignored):
 
 ```env
-PORT=5000
+PORT=5050
 CLIENT_URL=http://localhost:5173
 ```
 
 `config/env.js` reads these with defaults and logs the effective values on boot.
+
+## 8b. Port choice — not 5000
+
+macOS runs AirPlay Receiver (ControlCenter) on port 5000, so `listen` fails with
+`EADDRINUSE` from a process that looks like nothing the user started. Default is
+**5050**. Hit during the build, not in theory.
 
 ## 9. `/health`
 
