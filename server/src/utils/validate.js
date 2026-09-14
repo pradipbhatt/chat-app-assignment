@@ -34,3 +34,75 @@ export function validateText(input) {
     return fail('MESSAGE_TOO_LONG', `Message must be ${LIMITS.text.max} characters or fewer.`);
   return { ok: true, value };
 }
+
+export const THEME_TOKENS = [
+  'bg',
+  'surface',
+  'elevated',
+  'fg',
+  'fg-muted',
+  'fg-subtle',
+  'border',
+  'accent',
+  'accent-fg',
+  'accent-hover',
+  'success',
+  'warning',
+  'danger',
+  'track',
+];
+
+const CHANNEL = /^([01]?\d{1,2}|2[0-4]\d|25[0-5])$/;
+
+function isChannelTriple(value) {
+  if (typeof value !== 'string') return false;
+  const parts = value.trim().split(/\s+/);
+  return parts.length === 3 && parts.every((part) => CHANNEL.test(part));
+}
+
+export function validateThemeName(input) {
+  if (typeof input !== 'string') return fail('THEME_NAME_INVALID', 'Theme name is required.');
+  const value = input.trim().replace(/\s+/g, ' ');
+  if (value.length < 2) return fail('THEME_NAME_INVALID', 'Theme name is required.');
+  if (value.length > 32)
+    return fail('THEME_NAME_TOO_LONG', 'Theme name must be 32 characters or fewer.');
+  if (!/^[\w \-']+$/.test(value))
+    return fail('THEME_NAME_CHARSET', 'Use letters, numbers, spaces and hyphens only.');
+  return { ok: true, value };
+}
+
+export function validateTheme(payload = {}) {
+  const name = validateThemeName(payload.name);
+  if (!name.ok) return name;
+
+  const mode = payload.mode === 'dark' ? 'dark' : payload.mode === 'light' ? 'light' : null;
+  if (!mode) return fail('THEME_MODE_INVALID', 'Choose whether the theme is light or dark.');
+
+  const source = payload.colors;
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return fail('THEME_COLORS_INVALID', 'Theme colours are missing.');
+  }
+
+  const colors = {};
+  for (const token of THEME_TOKENS) {
+    const value = source[token];
+    if (!isChannelTriple(value)) {
+      return fail('THEME_COLOR_INVALID', `The ${token} colour is not a valid value.`);
+    }
+    colors[token] = value.trim().split(/\s+/).join(' ');
+  }
+
+  if (!isChannelTriple(payload.shadowTint)) {
+    return fail('THEME_SHADOW_INVALID', 'The shadow tint is not a valid value.');
+  }
+
+  return {
+    ok: true,
+    value: {
+      name: name.value,
+      mode,
+      colors,
+      shadowTint: payload.shadowTint.trim().split(/\s+/).join(' '),
+    },
+  };
+}

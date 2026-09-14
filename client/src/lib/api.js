@@ -38,3 +38,14 @@ export const login = (username, password) =>
   apiRequest('/api/auth/login', { method: 'POST', body: { username, password } });
 
 export const getMe = (token) => apiRequest('/api/auth/me', { token });
+
+export const getThemes = () => apiRequest('/api/themes');
+
+export const createTheme = (theme, token) =>
+  apiRequest('/api/themes', { method: 'POST', body: theme, token });
+
+export const updateTheme = (id, theme, token) =>
+  apiRequest(`/api/themes/${id}`, { method: 'PUT', body: theme, token });
+
+export const deleteTheme = (id, token) =>
+  apiRequest(`/api/themes/${id}`, { method: 'DELETE', token });

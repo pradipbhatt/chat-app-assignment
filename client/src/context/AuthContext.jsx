@@ -24,6 +24,7 @@ const writeToken = (token) => {
 
 export function AuthProvider({ children }) {
   const [account, setAccount] = useState(null);
+  const [token, setToken] = useState(readToken);
   const [restoring, setRestoring] = useState(true);
 
   useEffect(() => {
@@ -47,6 +48,7 @@ export function AuthProvider({ children }) {
         if (!active) return;
         writeToken(null);
         setSocketToken(null);
+        setToken(null);
         setRestoring(false);
       });
 
@@ -60,6 +62,7 @@ export function AuthProvider({ children }) {
       const data = await loginRequest(username, password);
       writeToken(data.token);
       setSocketToken(data.token);
+      setToken(data.token);
       setAccount(data.user);
       return { ok: true, user: data.user };
     } catch (error) {
@@ -70,12 +73,13 @@ export function AuthProvider({ children }) {
   const signOut = useCallback(() => {
     writeToken(null);
     setSocketToken(null);
+    setToken(null);
     setAccount(null);
   }, []);
 
   const value = useMemo(
-    () => ({ account, restoring, signIn, signOut, isAdmin: account?.role === 'admin' }),
-    [account, restoring, signIn, signOut],
+    () => ({ account, token, restoring, signIn, signOut, isAdmin: account?.role === 'admin' }),
+    [account, token, restoring, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
