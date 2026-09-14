@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAdmin } from '../hooks/useAdmin.js';
 import { Notice } from '../components/Notice.jsx';
 
-function ModerationRow({ user, onKick, onBan }) {
+function ModerationRow({ user, onKick, onBan, protectedAccount }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [minutes, setMinutes] = useState('');
@@ -14,17 +14,23 @@ function ModerationRow({ user, onKick, onBan }) {
           <p className="truncate text-sm text-fg">{user.username}</p>
           <p className="truncate text-xs text-fg-subtle">#{user.room}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          className="shrink-0 rounded-full bg-surface px-3 py-1.5 text-xs font-bold text-fg-muted shadow-clay-sm hover:text-fg"
-        >
-          {open ? 'Close' : 'Manage'}
-        </button>
+        {protectedAccount ? (
+          <span className="shrink-0 rounded-full bg-accent/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+            account
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            className="shrink-0 rounded-full bg-surface px-3 py-1.5 text-xs font-bold text-fg-muted shadow-clay-sm hover:text-fg"
+          >
+            {open ? 'Close' : 'Manage'}
+          </button>
+        )}
       </div>
 
-      {open && (
+      {open && !protectedAccount && (
         <div className="mt-2.5 flex flex-col gap-2">
           <input
             value={reason}
@@ -95,6 +101,7 @@ export function AdminPanel({ open, onClose, room, embedded = false }) {
                 user={user}
                 onKick={admin.kick}
                 onBan={admin.ban}
+                protectedAccount={user.role === 'admin'}
               />
             ))}
           </ul>

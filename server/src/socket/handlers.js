@@ -76,7 +76,8 @@ export function registerHandlers(io, socket) {
     }
 
     try {
-      const ban = await findActiveBan(username.value, room.value);
+      const ban =
+        socket.data.role === ROLES.ADMIN ? null : await findActiveBan(username.value, room.value);
       if (ban) {
         return reject(
           socket,

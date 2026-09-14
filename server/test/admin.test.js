@@ -257,6 +257,52 @@ test('a signed-in admin cannot join under someone else name', async () => {
   assert.equal(attempt.code, 'USERNAME_MISMATCH');
 });
 
+test('a registered account cannot be kicked or banned, even by an administrator', async () => {
+  const name = room();
+  const admin = client({ token });
+  await join(admin, ADMIN_USERNAME, name);
+
+  const kick = await emit(admin, 'admin:kick', { username: ADMIN_USERNAME });
+  assert.equal(kick.ok, false);
+  assert.equal(kick.code, 'PROTECTED_ACCOUNT');
+
+  const ban = await emit(admin, 'admin:ban', { username: ADMIN_USERNAME, reason: 'oops' });
+  assert.equal(ban.ok, false);
+  assert.equal(ban.code, 'PROTECTED_ACCOUNT');
+
+  assert.equal(admin.connected, true);
+
+  const rest = await api('/api/admin/kick', {
+    method: 'POST',
+    token,
+    body: { username: ADMIN_USERNAME },
+  });
+  assert.equal(rest.status, 400);
+});
+
+test('a ban stored against an account name does not lock the administrator out', async () => {
+  const name = room();
+
+  await mongoose.connection.collection('bans').insertOne({
+    username: ADMIN_USERNAME,
+    room: null,
+    reason: 'left over',
+    createdBy: 'someone',
+    expiresAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const blockedUser = await join(client(), 'Bystander', name);
+  assert.equal(blockedUser.ok, true);
+
+  const admin = await join(client({ token }), ADMIN_USERNAME, name);
+  assert.equal(admin.ok, true);
+  assert.equal(admin.role, 'admin');
+
+  await mongoose.connection.collection('bans').deleteMany({ username: ADMIN_USERNAME });
+});
+
 test('login is rate limited after repeated failures', async () => {
   let sawLimit = false;
   for (let attempt = 0; attempt < 12; attempt += 1) {

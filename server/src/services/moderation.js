@@ -3,9 +3,16 @@ import { createBan, removeBan, listBans } from '../models/Ban.js';
 import { getIo } from '../socket/ioRef.js';
 import { findSocketIds, getAllUsers, getActiveRooms, getRoomUsers } from '../socket/rooms.js';
 import { validateRoom, validateUsername } from '../utils/validate.js';
+import { isReservedUsername } from '../models/User.js';
 
 const notFound = (message) => ({ ok: false, code: 'NOT_FOUND', message });
 const invalid = (code, message) => ({ ok: false, code, message });
+
+const protectedAccount = (username) =>
+  invalid(
+    'PROTECTED_ACCOUNT',
+    `"${username}" is a registered account and cannot be kicked or banned.`,
+  );
 
 export function overview() {
   const users = getAllUsers();
@@ -20,6 +27,7 @@ export function overview() {
 export async function kickUser({ username, room, actor, reason = '' }) {
   const name = validateUsername(username);
   if (!name.ok) return invalid(name.code, name.message);
+  if (isReservedUsername(name.value)) return protectedAccount(name.value);
 
   const io = getIo();
   if (!io) return invalid('UNAVAILABLE', 'Realtime server is not ready.');
@@ -40,6 +48,7 @@ export async function kickUser({ username, room, actor, reason = '' }) {
 export async function banUser({ username, room, actor, reason = '', minutes = null }) {
   const name = validateUsername(username);
   if (!name.ok) return invalid(name.code, name.message);
+  if (isReservedUsername(name.value)) return protectedAccount(name.value);
 
   let scope = null;
   if (room) {
