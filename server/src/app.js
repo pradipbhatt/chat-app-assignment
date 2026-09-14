@@ -14,6 +14,8 @@ export function createApp() {
   const app = express();
 
   app.set('trust proxy', 1);
+
+  app.use('/health', cors({ origin: '*', methods: ['GET'] }));
   app.use(cors({ origin: config.clientUrls }));
   app.use(express.json({ limit: config.maxPayloadBytes }));
 
