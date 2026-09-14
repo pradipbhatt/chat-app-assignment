@@ -107,7 +107,7 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
           Room inspector
@@ -164,8 +164,8 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
             </Notice>
           )}
 
-          <div className="flex h-[26rem] overflow-hidden rounded-panel bg-bg shadow-clay-in">
-            <aside className="scrollbar-soft hidden w-44 shrink-0 overflow-y-auto bg-surface px-3 py-4 sm:block">
+          <div className="flex h-[28rem] overflow-hidden rounded-panel bg-bg shadow-clay-in">
+            <aside className="scrollbar-soft hidden w-48 shrink-0 overflow-y-auto bg-surface px-4 py-5 sm:block">
               <UserList users={users} username={account?.username ?? ''} />
             </aside>
 
@@ -188,13 +188,13 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
                 />
               )}
 
-              <div className="bg-surface px-4 py-3 text-center text-[11px] font-bold text-fg-subtle">
+              <div className="bg-surface px-4 py-3.5 text-center text-[11px] font-bold text-fg-subtle">
                 Watching in read only — you cannot post here
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5">
             <h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-subtle">
               Manage people · {users.length}
             </h3>
@@ -225,7 +225,7 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
             )}
 
             {target && (
-              <div className="flex flex-col gap-2 rounded-clay bg-elevated p-2.5 shadow-clay-in">
+              <div className="flex flex-col gap-2.5 rounded-clay bg-elevated p-3.5 shadow-clay-in">
                 <p className="text-[11px] text-fg-muted">
                   Acting on <span className="font-bold text-fg">{target}</span> in #{selected}
                 </p>
@@ -256,7 +256,7 @@ export function RoomInspector({ rooms, escrowKey, onKick, onBan, onClear }) {
             )}
 
             {confirmClear ? (
-              <div className="rounded-clay bg-danger/12 p-2.5 shadow-clay-in">
+              <div className="rounded-clay bg-danger/12 p-3.5 shadow-clay-in">
                 <p className="text-[11px] text-danger">
                   Delete every message in #{selected}? This cannot be undone.
                 </p>

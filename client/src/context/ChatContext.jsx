@@ -391,7 +391,7 @@ export function ChatProvider({ children }) {
     setLoadingOlder(true);
     const response = await emitWithAck('messages:load', {
       before: messages[0].ts,
-      limit: 30,
+      limit: 25,
     });
     setLoadingOlder(false);
 

@@ -105,7 +105,7 @@ export function PrivateReview({ open, onUnlocked }) {
   if (!open) return null;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
         Private room review
       </h3>
@@ -154,7 +154,7 @@ export function PrivateReview({ open, onUnlocked }) {
           ) : (
             <ul className="flex flex-col gap-2">
               {rooms.map((entry) => (
-                <li key={entry.room} className="rounded-clay bg-elevated p-2.5 shadow-clay-in">
+                <li key={entry.room} className="rounded-clay bg-elevated p-3.5 shadow-clay-in">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate font-mono text-[11px] text-fg">{entry.room}</p>
@@ -179,14 +179,14 @@ export function PrivateReview({ open, onUnlocked }) {
           )}
 
           {transcript && (
-            <div className="rounded-clay bg-bg p-2.5 shadow-clay-in">
+            <div className="rounded-clay bg-bg p-4 shadow-clay-in">
               <p className="font-mono text-[10px] uppercase tracking-wide text-fg-subtle">
                 {transcript.room}
               </p>
               {transcript.note ? (
                 <p className="mt-1.5 text-[11px] text-warning">{transcript.note}</p>
               ) : (
-                <ul className="mt-2 flex max-h-56 flex-col gap-1.5 overflow-y-auto">
+                <ul className="scrollbar-soft mt-2.5 flex max-h-56 flex-col gap-2 overflow-y-auto">
                   {transcript.lines.map((line) => (
                     <li key={line.id} className="text-[11px] leading-snug">
                       <span className="font-mono text-fg-subtle">{formatTime(line.ts)} </span>

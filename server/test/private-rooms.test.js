@@ -17,9 +17,11 @@ import {
   resetPrivateRooms,
   PRIVATE_PREFIX,
 } from '../src/socket/privateRooms.js';
+import { config } from '../src/config/env.js';
 
 const HOUR = 60 * 60 * 1000;
-const MINUTE = 60 * 1000;
+const LIFETIME = config.privateRoom.lifetimeHours * HOUR;
+const GRACE = config.privateRoom.graceHours * HOUR;
 
 beforeEach(() => resetPrivateRooms());
 
@@ -72,10 +74,10 @@ test('a room left empty is cleared once the grace period passes', () => {
   const { slug } = createPrivateRoom('Maker');
   markEmpty(slug);
 
-  assert.deepEqual(sweep(Date.now() + 5 * MINUTE), []);
+  assert.deepEqual(sweep(Date.now() + GRACE / 2), []);
   assert.ok(getPrivateRoom(slug));
 
-  assert.deepEqual(sweep(Date.now() + 11 * MINUTE), [slug]);
+  assert.deepEqual(sweep(Date.now() + GRACE + HOUR), [slug]);
   assert.equal(getPrivateRoom(slug), null);
 });
 
@@ -84,7 +86,7 @@ test('someone rejoining before the grace period keeps the room alive', () => {
   markEmpty(slug);
   markOccupied(slug);
 
-  assert.deepEqual(sweep(Date.now() + 30 * MINUTE), []);
+  assert.deepEqual(sweep(Date.now() + GRACE / 2), []);
   assert.ok(getPrivateRoom(slug));
 });
 
@@ -92,14 +94,14 @@ test('an occupied room still closes once its lifetime is up', () => {
   const { slug } = createPrivateRoom('Maker');
   markOccupied(slug);
 
-  assert.deepEqual(sweep(Date.now() + 3 * HOUR), []);
-  assert.deepEqual(sweep(Date.now() + 5 * HOUR), [slug]);
+  assert.deepEqual(sweep(Date.now() + LIFETIME / 2), []);
+  assert.deepEqual(sweep(Date.now() + LIFETIME + HOUR), [slug]);
   assert.equal(getPrivateRoom(slug), null);
 });
 
 test('an expired room reports as gone rather than being recreated', () => {
   const { slug } = createPrivateRoom('Maker');
-  sweep(Date.now() + 5 * HOUR);
+  sweep(Date.now() + LIFETIME + HOUR);
 
   assert.equal(getPrivateRoom(slug), null);
   assert.equal(appendMessage(slug, { username: 'A', text: 'late' }), null);
@@ -164,7 +166,7 @@ test('a correct passcode clears that guesser\'s failed attempts', () => {
 
 test('an expired room refuses any passcode', () => {
   const { slug, passcode } = createPrivateRoom('Maker');
-  sweep(Date.now() + 5 * HOUR);
+  sweep(Date.now() + LIFETIME + HOUR);
   assert.equal(verifyPasscode(slug, passcode).code, 'ROOM_EXPIRED');
   assert.equal(readPasscode(slug), null);
 });

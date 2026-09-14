@@ -37,7 +37,7 @@ export function ServerLogs({ open }) {
   ];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">Server</h3>
         <span
@@ -54,11 +54,11 @@ export function ServerLogs({ open }) {
         </span>
       </div>
 
-      <dl className="grid grid-cols-3 gap-1.5">
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {stats.map(([label, value]) => (
-          <div key={label} className="rounded-clay bg-elevated px-2 py-1.5 shadow-clay-in">
+          <div key={label} className="rounded-clay bg-elevated px-3 py-2.5 shadow-clay-in">
             <dt className="font-mono text-[9px] uppercase tracking-wide text-fg-subtle">{label}</dt>
-            <dd className="truncate font-mono text-[11px] font-medium text-fg">{value}</dd>
+            <dd className="mt-0.5 truncate font-mono text-xs font-medium text-fg">{value}</dd>
           </div>
         ))}
       </dl>
@@ -83,7 +83,7 @@ export function ServerLogs({ open }) {
         </button>
       </div>
 
-      <div className="scrollbar-soft max-h-64 overflow-y-auto rounded-clay bg-bg p-2.5 shadow-clay-in">
+      <div className="scrollbar-soft max-h-64 overflow-y-auto rounded-clay bg-bg p-3.5 shadow-clay-in">
         {state === 'loading' && <p className="text-[11px] text-fg-subtle">Connecting to the log…</p>}
         {state === 'error' && (
           <p className="text-[11px] text-danger">Could not read the log stream.</p>
@@ -94,7 +94,7 @@ export function ServerLogs({ open }) {
 
         <ul className="flex flex-col gap-1">
           {entries.map((entry) => (
-            <li key={entry.id} className="flex gap-2 font-mono text-[10.5px] leading-snug">
+            <li key={entry.id} className="flex gap-2.5 font-mono text-[10.5px] leading-relaxed">
               <span className="shrink-0 text-fg-subtle">{clock(entry.ts)}</span>
               <span className={`break-all ${LEVEL_CLASS[entry.level] ?? 'text-fg-muted'}`}>
                 {entry.message}

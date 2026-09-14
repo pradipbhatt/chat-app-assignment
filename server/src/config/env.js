@@ -12,7 +12,8 @@ export const config = {
   port: Number(process.env.PORT) || 5050,
   clientUrls: origins.length ? origins : ['http://localhost:5173'],
   mongoUri: process.env.MONGODB_URI || '',
-  historyLimit: Number(process.env.HISTORY_LIMIT) || 50,
+  historyLimit: Number(process.env.HISTORY_LIMIT) || 25,
+  pageSize: Number(process.env.PAGE_SIZE) || 25,
   maxPayloadBytes: Number(process.env.MAX_PAYLOAD_BYTES) || 16384,
   rateLimit: {
     capacity: Number(process.env.RATE_LIMIT_CAPACITY) || 5,

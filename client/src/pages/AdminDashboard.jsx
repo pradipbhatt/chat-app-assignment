@@ -168,10 +168,10 @@ function Dashboard() {
 
   return (
     <div className="min-h-[100dvh]">
-      <header className="flex items-center justify-between gap-3 bg-surface px-4 py-3 shadow-[0_10px_26px_-20px_var(--clay-drop)] sm:px-6">
+      <header className="flex items-center justify-between gap-4 bg-surface px-5 py-4 shadow-[0_10px_26px_-20px_var(--clay-drop)] sm:px-8">
         <div>
-          <h1 className="font-display text-xl font-extrabold">Control room</h1>
-          <p className="text-xs text-fg-muted">Signed in as {account.username}</p>
+          <h1 className="font-display text-xl font-extrabold leading-tight">Control room</h1>
+          <p className="mt-0.5 text-xs text-fg-muted">Signed in as {account.username}</p>
         </div>
         <div className="flex items-center gap-2">
           <a
@@ -191,12 +191,12 @@ function Dashboard() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-2">
-        <section className="rounded-panel bg-surface p-5 shadow-clay lg:col-span-2">
+      <main className="mx-auto grid max-w-5xl gap-6 px-5 py-7 sm:px-8 sm:py-9 lg:grid-cols-2">
+        <section className="rounded-panel bg-surface p-6 shadow-clay sm:p-7 lg:col-span-2">
           <ServerLogs open />
         </section>
 
-        <section className="rounded-panel bg-surface p-5 shadow-clay">
+        <section className="rounded-panel bg-surface p-6 shadow-clay sm:p-7">
           <RoomInspector
             rooms={admin.overview.rooms}
             escrowKey={escrowKey}
@@ -206,7 +206,7 @@ function Dashboard() {
           />
         </section>
 
-        <section className="rounded-panel bg-surface p-5 shadow-clay">
+        <section className="rounded-panel bg-surface p-6 shadow-clay sm:p-7">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
             Connected users
           </h2>
@@ -216,9 +216,9 @@ function Dashboard() {
             </div>
           )}
           {admin.overview.users.length === 0 ? (
-            <p className="mt-3 text-xs text-fg-subtle">Nobody is connected.</p>
+            <p className="mt-4 text-xs text-fg-subtle">Nobody is connected.</p>
           ) : (
-            <ul className="mt-3 flex flex-col gap-2">
+            <ul className="mt-4 flex flex-col gap-2.5">
               {admin.overview.users.map((user) => (
                 <ModerationRow
                   key={`${user.room}:${user.username}`}
@@ -230,13 +230,13 @@ function Dashboard() {
             </ul>
           )}
 
-          <h2 className="mt-6 font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
+          <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
             Rooms
           </h2>
           {admin.overview.rooms.length === 0 ? (
-            <p className="mt-3 text-xs text-fg-subtle">No rooms are active.</p>
+            <p className="mt-4 text-xs text-fg-subtle">No rooms are active.</p>
           ) : (
-            <ul className="mt-3 flex flex-col gap-2">
+            <ul className="mt-4 flex flex-col gap-2.5">
               {admin.overview.rooms.map((room) => (
                 <li
                   key={room.room}
@@ -283,16 +283,16 @@ function Dashboard() {
           )}
         </section>
 
-        <section className="rounded-panel bg-surface p-5 shadow-clay">
+        <section className="rounded-panel bg-surface p-6 shadow-clay sm:p-7">
           <PrivateReview open onUnlocked={setEscrowKey} />
 
-          <h2 className="mt-6 font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
+          <h2 className="mt-8 font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
             Active bans
           </h2>
           {admin.bans.length === 0 ? (
-            <p className="mt-3 text-xs text-fg-subtle">No bans in place.</p>
+            <p className="mt-4 text-xs text-fg-subtle">No bans in place.</p>
           ) : (
-            <ul className="mt-3 flex flex-col gap-2">
+            <ul className="mt-4 flex flex-col gap-2.5">
               {admin.bans.map((ban) => (
                 <li
                   key={ban.id}

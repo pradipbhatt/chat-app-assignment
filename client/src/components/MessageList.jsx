@@ -1,3 +1,4 @@
+import { useCallback, useRef } from 'react';
 import { MessageBubble } from './MessageBubble.jsx';
 import { PendingMessage } from './PendingMessage.jsx';
 import { useAutoScroll } from '../hooks/useAutoScroll.js';
@@ -18,10 +19,23 @@ export function MessageList({
   const { containerRef, onScroll, hasNewBelow, scrollToBottom, captureBeforePrepend } =
     useAutoScroll(messages);
 
-  const loadOlder = async () => {
+  const loadingRef = useRef(false);
+
+  const loadOlder = useCallback(async () => {
+    if (loadingRef.current || !hasMore) return;
+    loadingRef.current = true;
     captureBeforePrepend();
     await onLoadOlder();
-  };
+    loadingRef.current = false;
+  }, [hasMore, onLoadOlder, captureBeforePrepend]);
+
+  const handleScroll = useCallback(
+    (event) => {
+      onScroll(event);
+      if (event.target.scrollTop < 120) loadOlder();
+    },
+    [onScroll, loadOlder],
+  );
 
   const empty = messages.length === 0 && pending.length === 0;
 
@@ -29,20 +43,34 @@ export function MessageList({
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div
         ref={containerRef}
-        onScroll={onScroll}
+        onScroll={handleScroll}
         className="scrollbar-soft flex-1 overflow-y-auto px-4 py-5 sm:px-6"
       >
         <div className="mx-auto flex max-w-2xl flex-col">
           {hasMore && (
-            <div className="mb-4 flex justify-center">
-              <button
-                type="button"
-                onClick={loadOlder}
-                disabled={loadingOlder}
-                className="rounded-full bg-surface px-4 py-2 text-xs font-bold text-fg-muted shadow-clay-sm transition-transform hover:-translate-y-0.5 hover:text-fg disabled:opacity-50"
-              >
-                {loadingOlder ? 'Loading…' : 'Load older messages'}
-              </button>
+            <div className="mb-5 flex justify-center">
+              {loadingOlder ? (
+                <span className="flex items-center gap-2 rounded-full bg-elevated px-4 py-2 text-xs font-bold text-fg-subtle shadow-clay-in">
+                  <span className="flex gap-1">
+                    {[0, 120, 240].map((delay) => (
+                      <span
+                        key={delay}
+                        style={{ animationDelay: `${delay}ms` }}
+                        className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-fg-subtle"
+                      />
+                    ))}
+                  </span>
+                  Loading earlier messages
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={loadOlder}
+                  className="rounded-full bg-surface px-4 py-2 text-xs font-bold text-fg-muted shadow-clay-sm transition-transform hover:-translate-y-0.5 hover:text-fg"
+                >
+                  Load earlier messages
+                </button>
+              )}
             </div>
           )}
 
