@@ -1,5 +1,9 @@
 import { ROLES } from '../models/User.js';
 import { listEntries, subscribe } from '../utils/logBuffer.js';
+import { getRoomUsers } from './rooms.js';
+import { isPrivateName, readMessages, getPrivateRoom } from './privateRooms.js';
+import { getRecentMessages } from '../models/Message.js';
+import { validateRoom } from '../utils/validate.js';
 import { serverStatus } from '../routes/logs.js';
 import {
   overview,
@@ -24,6 +28,13 @@ const LOG_ROOM = 'admin:logs';
 export function registerAdminHandlers(io, socket) {
   let unsubscribe = null;
   let statusTimer = null;
+
+  const stopObserving = () => {
+    if (socket.data.observing) {
+      socket.leave(socket.data.observing);
+      socket.data.observing = null;
+    }
+  };
 
   const stopStreaming = () => {
     if (unsubscribe) {
@@ -80,7 +91,49 @@ export function registerAdminHandlers(io, socket) {
     }),
   );
 
-  socket.on('disconnect', stopStreaming);
+  socket.on(
+    'admin:observe',
+    guard(async (payload) => {
+      const room = validateRoom(payload.room);
+      if (!room.ok) return { ok: false, code: room.code, message: room.message };
+
+      stopObserving();
+
+      const isPrivate = isPrivateName(room.value);
+      if (isPrivate && !getPrivateRoom(room.value)) {
+        return { ok: false, code: 'ROOM_EXPIRED', message: 'That private room has closed.' };
+      }
+
+      socket.join(room.value);
+      socket.data.observing = room.value;
+
+      const page = isPrivate
+        ? readMessages(room.value, 200)
+        : await getRecentMessages(room.value, 200);
+
+      return {
+        ok: true,
+        room: room.value,
+        private: isPrivate,
+        users: getRoomUsers(room.value),
+        messages: page.messages,
+        hasMore: page.hasMore,
+      };
+    }),
+  );
+
+  socket.on(
+    'admin:unobserve',
+    guard(async () => {
+      stopObserving();
+      return { ok: true };
+    }),
+  );
+
+  socket.on('disconnect', () => {
+    stopStreaming();
+    stopObserving();
+  });
 
   socket.on(
     'admin:kick',

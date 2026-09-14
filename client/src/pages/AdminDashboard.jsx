@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAdmin } from '../hooks/useAdmin.js';
 import { TextField } from '../components/TextField.jsx';
 import { Notice } from '../components/Notice.jsx';
 import { ServerLogs } from '../components/ServerLogs.jsx';
 import { PrivateReview } from '../components/PrivateReview.jsx';
+import { RoomInspector } from '../components/RoomInspector.jsx';
 import { SettingsButton } from '../components/SettingsButton.jsx';
 import { SettingsDialog } from '../components/SettingsDialog.jsx';
-import { connectSocket } from '../lib/socket.js';
+import { connectSocket, getSocket } from '../lib/socket.js';
 
 function SignIn() {
   const { signIn } = useAuth();
@@ -143,9 +144,27 @@ function ModerationRow({ user, onKick, onBan }) {
 
 function Dashboard() {
   const { account, signOut } = useAuth();
-  const admin = useAdmin(true);
+  const [socketReady, setSocketReady] = useState(() => getSocket().connected);
+  const admin = useAdmin(socketReady);
+
+  useEffect(() => {
+    const socket = connectSocket();
+    if (socket.connected) setSocketReady(true);
+
+    const onConnect = () => setSocketReady(true);
+    const onDisconnect = () => setSocketReady(false);
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+    };
+  }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [clearing, setClearing] = useState('');
+  const [escrowKey, setEscrowKey] = useState(null);
 
   return (
     <div className="min-h-[100dvh]">
@@ -175,6 +194,16 @@ function Dashboard() {
       <main className="mx-auto grid max-w-5xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-2">
         <section className="rounded-panel bg-surface p-5 shadow-clay lg:col-span-2">
           <ServerLogs open />
+        </section>
+
+        <section className="rounded-panel bg-surface p-5 shadow-clay">
+          <RoomInspector
+            rooms={admin.overview.rooms}
+            escrowKey={escrowKey}
+            onKick={(username, room, reason) => admin.kick(username, room, reason)}
+            onBan={(username, room, reason) => admin.ban(username, room, reason, null)}
+            onClear={(room) => admin.clearRoom(room)}
+          />
         </section>
 
         <section className="rounded-panel bg-surface p-5 shadow-clay">
@@ -255,7 +284,7 @@ function Dashboard() {
         </section>
 
         <section className="rounded-panel bg-surface p-5 shadow-clay">
-          <PrivateReview open />
+          <PrivateReview open onUnlocked={setEscrowKey} />
 
           <h2 className="mt-6 font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
             Active bans

@@ -13,7 +13,7 @@ import {
 } from '../lib/escrowBridge.js';
 import { formatTime } from '../lib/format.js';
 
-export function PrivateReview({ open }) {
+export function PrivateReview({ open, onUnlocked }) {
   const { token } = useAuth();
   const [stage, setStage] = useState('checking');
   const [vault, setVault] = useState(null);
@@ -53,6 +53,7 @@ export function PrivateReview({ open }) {
 
     setPrivateKey(key);
     setPassphrase('');
+    onUnlocked?.(key);
 
     try {
       const data = await listPrivateRooms(token);

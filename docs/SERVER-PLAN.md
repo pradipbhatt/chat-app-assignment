@@ -374,6 +374,27 @@ The buffer is per-process, so it shows the running instance only and resets on
 deploy — for anything older, the host's own log retention is still the place to
 look.
 
+## 9a2. Watching a room without being in it
+
+The control room can switch between rooms and watch one live. Joining normally
+would put the administrator in the roster and announce them, which is not
+watching — it is participating. So `admin:observe` puts the socket into the
+Socket.IO room **without registering presence**: no roster entry, no join or
+leave notice, no typing broadcast. The room carries on exactly as it would
+unobserved.
+
+What the observer gets is the room's live event stream — new messages,
+deletions, clears and roster changes — plus the last 200 messages, read from
+MongoDB for a public room and from the memory buffer for a private one. A
+private room's messages arrive encrypted and stay unreadable unless the review
+key has been unlocked, in which case they are decrypted in the browser like any
+other review.
+
+There is no composer. An administrator can clear the conversation, remove
+someone from the room or ban them from it, but cannot post — the server offers
+no path to send as an observer, so this is a property of the protocol rather
+than a hidden button.
+
 ## 9b. Acknowledgements
 
 Every client event answers through a Socket.IO ack — `{ ok: true, ... }` or

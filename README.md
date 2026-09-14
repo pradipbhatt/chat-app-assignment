@@ -68,6 +68,8 @@ The sections below describe what actually works today.
 
 - One authenticated administrator account, seeded from the environment
 - Live view of every connected user and room
+- Switch between rooms and watch one live without appearing in it, then clear
+  the conversation or remove and ban people from it
 - Live server log and status inside the app, streamed over the socket with
   credentials redacted before they are ever buffered
 - Kick a user, ban them (per room or everywhere, permanently or for a period),
