@@ -7,7 +7,23 @@ import { ThemeSwitcher } from '../components/ThemeSwitcher.jsx';
 import { Notice } from '../components/Notice.jsx';
 
 export function ChatPage() {
-  const { session, messages, users, connection, notice, send, leave } = useChat();
+  const {
+    session,
+    messages,
+    users,
+    connection,
+    notice,
+    typingUsers,
+    pending,
+    hasMore,
+    loadingOlder,
+    send,
+    leave,
+    signalTyping,
+    retryPending,
+    discardPending,
+    loadOlder,
+  } = useChat();
   const offline = connection !== 'connected';
 
   return (
@@ -48,9 +64,20 @@ export function ChatPage() {
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col">
-          <MessageList messages={messages} username={session.username} />
+          <MessageList
+            messages={messages}
+            pending={pending}
+            username={session.username}
+            hasMore={hasMore}
+            loadingOlder={loadingOlder}
+            onLoadOlder={loadOlder}
+            onRetry={retryPending}
+            onDiscard={discardPending}
+          />
           <MessageComposer
             onSend={send}
+            onTyping={signalTyping}
+            typingUsers={typingUsers}
             disabled={offline}
             disabledReason="You are offline. Messages cannot be sent until the connection returns."
           />
