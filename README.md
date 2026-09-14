@@ -11,11 +11,18 @@ lab, Computer Science, Virginia Tech.
 
 | Part | State |
 |---|---|
-| Server | Complete — 27 automated tests passing |
-| React client | Complete — chat, awareness and moderation |
-| Deployment | Not deployed |
+| Server | Complete — 36 automated tests passing |
+| React client | Complete — chat, awareness, themes and moderation |
+| Deployment | Live |
 
-Both halves run. The sections below describe what actually works today.
+**Try it:** [pradipchat.vercel.app](https://pradipchat.vercel.app) — open it in two
+windows and join the same room in both.
+
+The API runs separately at `chat-room-server-mmdq.onrender.com`. It is on a free
+plan that sleeps after 15 minutes of inactivity, so the first request after a
+quiet spell takes up to a minute to wake it.
+
+The sections below describe what actually works today.
 
 ## What it does
 
@@ -307,11 +314,16 @@ names, and components use only those names — `bg-surface`, `text-fg-muted`,
 to a list; no component changes. A stray `bg-zinc-800` would be a light-mode bug
 that no theme switch could fix, so there are none.
 
+## Deployment
+
+The client is on Vercel and the server on Render; a static host cannot hold
+WebSocket connections, so the two halves deploy separately and reference each
+other by URL. `render.yaml` and `client/vercel.json` carry the configuration,
+and `docs/DEPLOYMENT.md` has the full walkthrough.
+
 ## Remaining work
 
 1. Video walkthrough — planned in `docs/VIDEO.md`
-2. Optional deployment: the client on Netlify, the server on a Node host.
-   Netlify cannot host the WebSocket server itself
 
 ## Author
 
