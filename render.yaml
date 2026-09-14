@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: chat-room-server
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URL
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: HISTORY_LIMIT
+        value: "50"
+      - key: MAX_PAYLOAD_BYTES
+        value: "16384"
+      - key: RATE_LIMIT_CAPACITY
+        value: "5"
+      - key: RATE_LIMIT_REFILL_PER_SECOND
+        value: "5"
+      - key: SHUTDOWN_TIMEOUT_MS
+        value: "5000"
