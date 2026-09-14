@@ -214,9 +214,23 @@ kick only disconnects; a ban disconnects **and** prevents rejoining.
 
 Login is rate limited to 8 attempts per 10 minutes per IP.
 
+**Account names are reserved.** An anonymous user cannot join under a name that
+belongs to a registered account — otherwise anyone could type `admin` and appear
+to be one, and would also lock the real administrator out of their own name with
+`USERNAME_TAKEN`. The reserved set is loaded at boot and checked in memory, so
+this costs no database round trip per join.
+
+**The roster carries roles**, not just names (`{ username, role }`), so a client
+can badge a genuine admin from server truth rather than by matching a string.
+
 **Known limitation, deliberate:** since chat users are anonymous, a ban is on a
 *name*, not a person. Someone can rejoin under a different name. Closing that
 would require accounts for everyone, which is out of scope.
+
+**Token lifetime:** roles are resolved once at the WebSocket handshake, so a
+token that expires mid-session keeps its role until the socket reconnects.
+Tokens last 12h and there is no revocation list; signing out is the client
+dropping the token.
 
 ## 9b. Acknowledgements
 
@@ -253,7 +267,10 @@ across two files:
 - `test/server.test.js` — transport, rooms, isolation, roster, typing,
   validation, rate limiting, history, pagination, REST routes, shutdown.
 - `test/admin.test.js` — login, token rejection, privilege escalation attempts,
-  kick, ban and rejoin, message deletion, room clearing, login rate limiting.
+  reserved account names, kick, ban and rejoin, message deletion, room clearing,
+  login rate limiting.
+
+27 tests in total.
 
 The rate limit is configurable through `RATE_LIMIT_*` so the reconnect test can
 pin refill to zero — otherwise the bucket refills during the reconnect and the

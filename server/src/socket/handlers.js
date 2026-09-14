@@ -5,7 +5,7 @@ import { validateUsername, validateRoom, validateText } from '../utils/validate.
 import { addUser, removeUser, getUser, getRoomUsers, isNameTakenInRoom } from './rooms.js';
 import { consumeToken } from './rateLimit.js';
 import { findActiveBan } from '../models/Ban.js';
-import { ROLES } from '../models/User.js';
+import { ROLES, isReservedUsername } from '../models/User.js';
 
 const TYPING_TIMEOUT_MS = 4000;
 
@@ -54,15 +54,25 @@ export function registerHandlers(io, socket) {
     const room = validateRoom(payload.room);
     if (!room.ok) return reject(socket, respond, room.code, room.message);
 
-    if (socket.data.role === ROLES.ADMIN && socket.data.account) {
-      if (username.value.toLowerCase() !== socket.data.account.username.toLowerCase()) {
-        return reject(
-          socket,
-          respond,
-          'USERNAME_MISMATCH',
-          'Signed-in administrators must join under their own account name.',
-        );
-      }
+    const claimedName = username.value.toLowerCase();
+    const accountName = socket.data.account?.username?.toLowerCase() ?? null;
+
+    if (isReservedUsername(claimedName) && claimedName !== accountName) {
+      return reject(
+        socket,
+        respond,
+        'USERNAME_RESERVED',
+        'That name belongs to a registered account. Choose another one.',
+      );
+    }
+
+    if (socket.data.account && claimedName !== accountName) {
+      return reject(
+        socket,
+        respond,
+        'USERNAME_MISMATCH',
+        'Signed-in administrators must join under their own account name.',
+      );
     }
 
     try {
@@ -89,7 +99,7 @@ export function registerHandlers(io, socket) {
     }
 
     socket.join(room.value);
-    addUser(socket.id, username.value, room.value);
+    addUser(socket.id, username.value, room.value, socket.data.role);
 
     let history = [];
     let hasMore = false;

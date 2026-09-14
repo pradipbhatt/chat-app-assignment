@@ -147,11 +147,18 @@ test('the roster updates on join and on disconnect', async () => {
   await join(a, 'Pradip', name);
   await join(b, 'Alice', name);
   await wait(300);
-  assert.deepEqual(a.roster, ['Alice', 'Pradip']);
+  assert.deepEqual(
+    a.roster.map((user) => user.username),
+    ['Alice', 'Pradip'],
+  );
+  assert.ok(a.roster.every((user) => user.role === 'user'));
 
   b.disconnect();
   await wait(500);
-  assert.deepEqual(a.roster, ['Pradip']);
+  assert.deepEqual(
+    a.roster.map((user) => user.username),
+    ['Pradip'],
+  );
   assert.ok(a.inbox.some((message) => message.system && message.text.includes('Alice left')));
 });
 

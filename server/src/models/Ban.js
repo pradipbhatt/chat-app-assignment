@@ -12,6 +12,7 @@ const banSchema = new mongoose.Schema(
 );
 
 banSchema.index({ username: 1, room: 1 });
+banSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 banSchema.methods.toClient = function toClient() {
   return {

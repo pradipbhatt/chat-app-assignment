@@ -231,6 +231,32 @@ test('an admin can delete a message and clear a room', async () => {
   assert.equal(rejoined.history.length, 0);
 });
 
+test('an anonymous user cannot take a registered account name', async () => {
+  const blocked = await join(client(), ADMIN_USERNAME, room());
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.code, 'USERNAME_RESERVED');
+});
+
+test('the signed-in admin can still join under their own name and is badged', async () => {
+  const name = room();
+  const admin = client({ token });
+  const joined = await join(admin, ADMIN_USERNAME, name);
+
+  assert.equal(joined.ok, true);
+  assert.equal(joined.role, 'admin');
+
+  const member = client();
+  const view = await join(member, 'Member', name);
+  const entry = view.users.find((user) => user.username === ADMIN_USERNAME);
+  assert.equal(entry.role, 'admin');
+});
+
+test('a signed-in admin cannot join under someone else name', async () => {
+  const admin = client({ token });
+  const attempt = await join(admin, 'NotTheAdmin', room());
+  assert.equal(attempt.code, 'USERNAME_MISMATCH');
+});
+
 test('login is rate limited after repeated failures', async () => {
   let sawLimit = false;
   for (let attempt = 0; attempt < 12; attempt += 1) {

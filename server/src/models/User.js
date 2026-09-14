@@ -24,6 +24,19 @@ userSchema.methods.toClient = function toClient() {
 
 export const User = mongoose.model('User', userSchema);
 
+const reservedUsernames = new Set();
+
+export async function loadReservedUsernames() {
+  const accounts = await User.find({}, { username: 1 }).exec();
+  reservedUsernames.clear();
+  for (const account of accounts) reservedUsernames.add(account.username.toLowerCase());
+  return [...reservedUsernames];
+}
+
+export function isReservedUsername(username) {
+  return reservedUsernames.has(String(username).trim().toLowerCase());
+}
+
 export async function seedAdmin() {
   if (!config.admin.username || !config.admin.password) {
     console.warn('[auth] ADMIN_USERNAME or ADMIN_PASSWORD missing, admin account not seeded');

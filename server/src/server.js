@@ -3,11 +3,12 @@ import { config, logConfig } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/db.js';
 import { createApp } from './app.js';
 import { createSocketServer } from './socket/index.js';
-import { seedAdmin } from './models/User.js';
+import { seedAdmin, loadReservedUsernames } from './models/User.js';
 
 async function start() {
   await connectDatabase();
   await seedAdmin();
+  await loadReservedUsernames();
 
   const httpServer = createServer(createApp());
   const io = createSocketServer(httpServer);

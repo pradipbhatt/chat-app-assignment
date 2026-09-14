@@ -12,7 +12,7 @@ export function overview() {
   const rooms = getActiveRooms();
   return {
     rooms,
-    users: users.map(({ username, room }) => ({ username, room })),
+    users: users.map(({ username, room, role }) => ({ username, room, role })),
     totals: { users: users.length, rooms: rooms.length },
   };
 }

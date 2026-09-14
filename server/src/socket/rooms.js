@@ -1,8 +1,8 @@
 const users = new Map();
 const rooms = new Map();
 
-export function addUser(socketId, username, room) {
-  users.set(socketId, { username, room });
+export function addUser(socketId, username, room, role = 'user') {
+  users.set(socketId, { username, room, role });
   if (!rooms.has(room)) rooms.set(room, new Set());
   rooms.get(room).add(socketId);
 }
@@ -30,18 +30,25 @@ export function getRoomUsers(room) {
   const members = rooms.get(room);
   if (!members) return [];
   return [...members]
-    .map((id) => users.get(id)?.username)
+    .map((id) => users.get(id))
     .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
+    .map((user) => ({ username: user.username, role: user.role }))
+    .sort((a, b) => a.username.localeCompare(b.username));
 }
 
 export function isNameTakenInRoom(room, username) {
-  return getRoomUsers(room).some((name) => name.toLowerCase() === username.toLowerCase());
+  const wanted = username.toLowerCase();
+  return getRoomUsers(room).some((user) => user.username.toLowerCase() === wanted);
 }
 
 export function getAllUsers() {
   return [...users.entries()]
-    .map(([socketId, user]) => ({ socketId, username: user.username, room: user.room }))
+    .map(([socketId, user]) => ({
+      socketId,
+      username: user.username,
+      room: user.room,
+      role: user.role,
+    }))
     .sort((a, b) => a.room.localeCompare(b.room) || a.username.localeCompare(b.username));
 }
 
