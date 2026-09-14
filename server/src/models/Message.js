@@ -51,5 +51,9 @@ export async function getRecentMessages(room, limit, before = null) {
 }
 
 export async function getRoomsWithHistory() {
-  return Message.distinct('room');
+  return Message.aggregate([
+    { $group: { _id: '$room', lastMessageAt: { $max: '$createdAt' }, messages: { $sum: 1 } } },
+    { $sort: { lastMessageAt: -1 } },
+    { $limit: 60 },
+  ]).exec();
 }
