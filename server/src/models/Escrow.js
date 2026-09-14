@@ -8,6 +8,7 @@ const escrowSchema = new mongoose.Schema(
     salt: { type: String, required: true },
     iv: { type: String, required: true },
     iterations: { type: Number, required: true },
+    sealedBy: { type: String, enum: ['passphrase', 'server'], default: 'passphrase' },
     createdBy: { type: String, required: true },
   },
   { timestamps: true },

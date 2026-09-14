@@ -1,13 +1,12 @@
 import { Router } from 'express';
-import { readEscrow, publicEscrowKey, saveEscrow } from '../models/Escrow.js';
+import { publicEscrowKey } from '../models/Escrow.js';
 import { listRecordedRooms, readRoomKey } from '../models/RoomKey.js';
 import { Message } from '../models/Message.js';
 import { attachUser, requireAdmin } from '../middleware/auth.js';
 import { validateRoom } from '../utils/validate.js';
+import { unwrapRoomKey as serverUnwrap, decryptEnvelope } from '../utils/escrowServer.js';
 
 const router = Router();
-
-const isBase64 = (value) => typeof value === 'string' && /^[A-Za-z0-9+/_-]+={0,2}$/.test(value);
 
 router.get('/escrow/public-key', async (_req, res) => {
   try {
@@ -19,51 +18,7 @@ router.get('/escrow/public-key', async (_req, res) => {
   }
 });
 
-router.use('/escrow/vault', attachUser, requireAdmin);
 router.use('/admin/private-rooms', attachUser, requireAdmin);
-
-router.get('/escrow/vault', async (_req, res) => {
-  const escrow = await readEscrow();
-  if (!escrow) return res.status(404).json({ code: 'NO_ESCROW', message: 'No escrow key is set up.' });
-
-  return res.json({
-    ok: true,
-    vault: {
-      wrappedPrivateKey: escrow.wrappedPrivateKey,
-      salt: escrow.salt,
-      iv: escrow.iv,
-      iterations: escrow.iterations,
-    },
-  });
-});
-
-router.post('/escrow/vault', async (req, res) => {
-  const { publicKeyJwk, wrappedPrivateKey, salt, iv, iterations } = req.body ?? {};
-
-  if (!publicKeyJwk || typeof publicKeyJwk !== 'object' || publicKeyJwk.kty !== 'RSA') {
-    return res.status(400).json({ code: 'ESCROW_KEY_INVALID', message: 'The public key is not usable.' });
-  }
-
-  if (![wrappedPrivateKey, salt, iv].every(isBase64)) {
-    return res.status(400).json({ code: 'ESCROW_BLOB_INVALID', message: 'The sealed key is not usable.' });
-  }
-
-  const rounds = Number(iterations);
-  if (!Number.isFinite(rounds) || rounds < 100000 || rounds > 1000000) {
-    return res.status(400).json({ code: 'ESCROW_ROUNDS_INVALID', message: 'Unsafe key strengthening.' });
-  }
-
-  try {
-    await saveEscrow(
-      { publicKeyJwk, wrappedPrivateKey, salt, iv, iterations: rounds },
-      req.auth.username,
-    );
-    return res.status(201).json({ ok: true });
-  } catch (error) {
-    console.error('[escrow] failed to save', error);
-    return res.status(500).json({ code: 'ESCROW_SAVE_FAILED', message: 'Could not save the key.' });
-  }
-});
 
 router.get('/admin/private-rooms', async (_req, res) => {
   try {
@@ -90,16 +45,22 @@ router.get('/admin/private-rooms/:room', async (req, res) => {
 
   try {
     const wrappedKey = await readRoomKey(room.value);
-    const messages = await Message.find({ room: room.value })
-      .sort({ createdAt: 1 })
-      .limit(500)
-      .exec();
+    const stored = await Message.find({ room: room.value }).sort({ createdAt: 1 }).limit(500).exec();
+
+    const roomKey = await serverUnwrap(wrappedKey);
+    const messages = stored.map((message) => {
+      const entry = message.toClient();
+      if (!roomKey) return entry;
+      const plain = decryptEnvelope(roomKey, entry.text);
+      return plain === null ? entry : { ...entry, text: plain, decrypted: true };
+    });
 
     return res.json({
       ok: true,
       room: room.value,
       wrappedKey,
-      messages: messages.map((message) => message.toClient()),
+      readable: Boolean(roomKey),
+      messages,
     });
   } catch (error) {
     console.error('[escrow] failed to read a private room', error);

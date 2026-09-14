@@ -3,6 +3,8 @@ import { listEntries, subscribe } from '../utils/logBuffer.js';
 import { getRoomUsers } from './rooms.js';
 import { isPrivateName, readMessages, getPrivateRoom } from './privateRooms.js';
 import { getRecentMessages } from '../models/Message.js';
+import { readRoomKey } from '../models/RoomKey.js';
+import { unwrapRoomKey as serverUnwrap, decryptEnvelope } from '../utils/escrowServer.js';
 import { validateRoom } from '../utils/validate.js';
 import { serverStatus } from '../routes/logs.js';
 import {
@@ -33,6 +35,7 @@ export function registerAdminHandlers(io, socket) {
     if (socket.data.observing) {
       socket.leave(socket.data.observing);
       socket.data.observing = null;
+      socket.data.observeKey = null;
     }
   };
 
@@ -111,12 +114,31 @@ export function registerAdminHandlers(io, socket) {
         ? readMessages(room.value, 200)
         : await getRecentMessages(room.value, 200);
 
+      let messages = page.messages;
+      let readable = true;
+
+      if (isPrivate) {
+        const roomKey = await serverUnwrap(await readRoomKey(room.value));
+        socket.data.observeKey = roomKey;
+        readable = Boolean(roomKey);
+
+        if (roomKey) {
+          messages = messages.map((message) => {
+            const plain = decryptEnvelope(roomKey, message.text);
+            return plain === null ? message : { ...message, text: plain, decrypted: true };
+          });
+        }
+      } else {
+        socket.data.observeKey = null;
+      }
+
       return {
         ok: true,
         room: room.value,
         private: isPrivate,
+        readable,
         users: getRoomUsers(room.value),
-        messages: page.messages,
+        messages,
         hasMore: page.hasMore,
       };
     }),

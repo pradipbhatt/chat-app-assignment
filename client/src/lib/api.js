@@ -43,11 +43,6 @@ export const getThemes = () => apiRequest('/api/themes');
 
 export const getEscrowPublicKey = () => apiRequest('/api/escrow/public-key');
 
-export const getEscrowVault = (token) => apiRequest('/api/escrow/vault', { token });
-
-export const saveEscrowVault = (vault, token) =>
-  apiRequest('/api/escrow/vault', { method: 'POST', body: vault, token });
-
 export const listPrivateRooms = (token) => apiRequest('/api/admin/private-rooms', { token });
 
 export const readPrivateRoom = (room, token) =>

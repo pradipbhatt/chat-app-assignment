@@ -211,43 +211,39 @@ them before they join and badges the room `no key` rather than pretending.
 
 ### Administrator review, and what it costs
 
-An administrator can read private rooms.
+An administrator reads private rooms directly, with no passphrase. That is a
+deliberate choice, and it changes the threat model — so state it plainly rather
+than let the word "encrypted" imply more than it delivers.
 
-**The interface does not tell users this.** That is the owner's decision, taken
-deliberately after the alternative was offered, and it is recorded here rather
-than hidden: the chat interface describes private rooms only as encrypted in the
-browser, and says nothing about administrator review. Anyone evaluating the
-privacy of this app should read this paragraph as the authoritative statement,
-not the wording in the product.
+How it works now:
 
-Administration lives on a separate page at `/admin`. Nothing in the chat
-interface mentions it — no sign-in entry point, no moderation controls, no
-wording about review. A person using the chat sees only Invite, the roster,
-Leave and Settings.
+1. The server generates its own RSA keypair on boot and seals the private half
+   with AES-256-GCM under a key derived from `ESCROW_SECRET` (falling back to
+   `JWT_SECRET`). The sealed blob goes in MongoDB; the secret stays in the
+   environment.
+2. Clients wrap each room key with the server's public key at room creation.
+3. When an administrator opens a room, the server unwraps that key and decrypts
+   the transcript. Live messages are decrypted per observer and delivered as
+   `admin:message`, so watching a room reads normally.
 
-It works by escrow rather than by handing the server a key:
+**What this still protects:** a stolen database is useless on its own. Messages
+are ciphertext, room keys are wrapped, and the review key is sealed under a
+secret that is not in the database. An attacker needs the environment as well.
 
-1. The administrator generates an RSA-OAEP keypair **in their browser**. The
-   public half is stored and served openly; the private half is sealed with
-   AES-GCM under a key derived from a review passphrase (PBKDF2, 250k rounds)
-   that is typed in the browser and never transmitted.
-2. When a private room is created, the client wraps that room's AES key with the
-   escrow public key and sends only the wrapped blob.
-3. Messages are persisted as ciphertext, so a conversation can be reviewed after
-   the room has closed.
-4. To read one, the administrator types the review passphrase, which unseals the
-   private key in the browser, unwraps the room key, and decrypts locally.
+**What it no longer protects:** anyone who holds both the database and the
+server environment — the operator, or someone who compromises the host — can
+read every private room. There is no longer a human-held passphrase standing in
+the way, because you asked for the administrator to read without one.
 
-The property this buys, and it is the whole point: **the admin token alone is
-not enough.** Someone holding the JWT, or a full database dump, gets ciphertext
-and a passphrase-sealed private key. Verified by fetching the review endpoint
-with a valid admin token and reading the raw collections — both return
-envelopes.
+**Consequences worth knowing:**
 
-**This reverses an earlier decision.** Private rooms previously stored nothing
-at all. Reviewable conversations have to exist to be reviewed, so their
-ciphertext is now persisted. The property is no longer "nothing in the
-database"; it is "nothing readable in the database".
+- Rotating `ESCROW_SECRET` (or `JWT_SECRET`, when no dedicated secret is set)
+  makes every existing private room permanently unreadable. Set `ESCROW_SECRET`
+  explicitly so that rotating tokens does not destroy transcripts.
+- A room whose wrapped key cannot be opened degrades to sealed rather than
+  failing the request; the panel says so instead of erroring.
+- The earlier passphrase-sealed key was replaced on first boot of this version,
+  so rooms created under it are no longer reviewable.
 
 **What this does not cover, stated plainly:**
 

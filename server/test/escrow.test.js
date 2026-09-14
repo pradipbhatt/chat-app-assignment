@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createPublicKey, publicEncrypt, createCipheriv, constants } from 'node:crypto';
 import mongoose from 'mongoose';
 import 'dotenv/config';
 
@@ -15,8 +15,6 @@ const SERVER_DIR = fileURLToPath(new URL('..', import.meta.url));
 const ADMIN_USERNAME = 'escrowadmin';
 const ADMIN_PASSWORD = randomBytes(12).toString('base64url');
 
-const PUBLIC_JWK = { kty: 'RSA', n: 'x'.repeat(340), e: 'AQAB', alg: 'RSA-OAEP-256', ext: true };
-
 const testUri = () => {
   const raw = process.env.MONGODB_URI;
   if (!raw) throw new Error('MONGODB_URI is required to run the escrow tests.');
@@ -27,6 +25,8 @@ const testUri = () => {
 };
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const toBase64Url = (buffer) =>
+  buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 let server;
 let token;
@@ -41,13 +41,40 @@ const api = (path, options = {}) =>
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   });
 
-const validVault = () => ({
-  publicKeyJwk: PUBLIC_JWK,
-  wrappedPrivateKey: Buffer.from('sealed-private-key').toString('base64'),
-  salt: Buffer.from('saltsaltsaltsalt').toString('base64'),
-  iv: Buffer.from('ivivivivivii').toString('base64'),
-  iterations: 250000,
-});
+async function sealForRoom(room, plaintext) {
+  const { escrow } = await api('/api/escrow/public-key').then((response) => response.json());
+  const publicKey = createPublicKey({ key: escrow.publicKeyJwk, format: 'jwk' });
+
+  const roomKey = randomBytes(32);
+  const wrappedKey = publicEncrypt(
+    { key: publicKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+    roomKey,
+  ).toString('base64');
+
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', roomKey, iv);
+  const body = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const text = `e2e.v1.${toBase64Url(iv)}.${toBase64Url(Buffer.concat([body, cipher.getAuthTag()]))}`;
+
+  await mongoose.connection.collection('roomkeys').insertOne({
+    room,
+    wrappedKey,
+    createdBy: 'Someone',
+    expiresAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  await mongoose.connection.collection('messages').insertOne({
+    room,
+    username: 'Someone',
+    text,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  return { text };
+}
 
 before(async () => {
   const uri = testUri();
@@ -97,59 +124,25 @@ after(async () => {
   }
 });
 
-test('the public key is readable by anyone, and absent before setup', async () => {
-  const response = await api('/api/escrow/public-key');
-  assert.equal(response.status, 200);
-  assert.equal((await response.json()).escrow, null);
-});
-
-test('the sealed private key is never served to a non administrator', async () => {
-  assert.equal((await api('/api/escrow/vault')).status, 401);
-  assert.equal((await api('/api/escrow/vault', { token: 'forged.token.value' })).status, 401);
-});
-
-test('a malformed vault is refused', async () => {
-  const badKey = await api('/api/escrow/vault', {
-    method: 'POST',
-    token,
-    body: { ...validVault(), publicKeyJwk: { kty: 'oct' } },
-  });
-  assert.equal(badKey.status, 400);
-
-  const weak = await api('/api/escrow/vault', {
-    method: 'POST',
-    token,
-    body: { ...validVault(), iterations: 1000 },
-  });
-  assert.equal(weak.status, 400);
-  assert.equal((await weak.json()).code, 'ESCROW_ROUNDS_INVALID');
-
-  const junk = await api('/api/escrow/vault', {
-    method: 'POST',
-    token,
-    body: { ...validVault(), salt: 'not base64!!' },
-  });
-  assert.equal(junk.status, 400);
-});
-
-test('an administrator can store and read back the sealed key', async () => {
-  const saved = await api('/api/escrow/vault', { method: 'POST', token, body: validVault() });
-  assert.equal(saved.status, 201);
-
-  const shared = await api('/api/escrow/public-key').then((response) => response.json());
-  assert.equal(shared.escrow.publicKeyJwk.kty, 'RSA');
-  assert.equal(shared.escrow.publicKeyJwk.n, PUBLIC_JWK.n);
-
-  const vault = await api('/api/escrow/vault', { token }).then((response) => response.json());
-  assert.equal(vault.vault.iterations, 250000);
-  assert.equal(vault.vault.wrappedPrivateKey, validVault().wrappedPrivateKey);
-});
-
-test('the public endpoint never exposes the sealed private key', async () => {
+test('the server creates its own review key on boot', async () => {
   const body = await api('/api/escrow/public-key').then((response) => response.json());
-  const serialised = JSON.stringify(body);
-  assert.ok(!serialised.includes(validVault().wrappedPrivateKey));
-  assert.ok(!serialised.includes(validVault().salt));
+  assert.equal(body.escrow.publicKeyJwk.kty, 'RSA');
+  assert.equal(body.escrow.publicKeyJwk.alg, 'RSA-OAEP-256');
+});
+
+test('the sealed private key is never served over http', async () => {
+  const body = await api('/api/escrow/public-key').then((response) => response.text());
+  assert.ok(!body.includes('wrappedPrivateKey'));
+  assert.ok(!body.includes('"d"'));
+
+  assert.equal((await api('/api/escrow/vault')).status, 404);
+  assert.equal((await api('/api/escrow/vault', { method: 'POST', token, body: {} })).status, 404);
+});
+
+test('the private key is stored sealed, not in the clear', async () => {
+  const record = await mongoose.connection.collection('escrows').findOne({});
+  assert.equal(record.sealedBy, 'server');
+  assert.ok(!record.wrappedPrivateKey.includes('PRIVATE KEY'));
 });
 
 test('private room review is closed to anyone without an administrator token', async () => {
@@ -157,10 +150,28 @@ test('private room review is closed to anyone without an administrator token', a
   assert.equal((await api('/api/admin/private-rooms/p-room-abc')).status, 401);
 });
 
-test('a stored room returns ciphertext and its wrapped key, never plaintext', async () => {
+test('an administrator reads a stored room as plaintext', async () => {
+  const room = 'p-test-room-abcdef123456';
+  const { text } = await sealForRoom(room, 'the safe combination is 1234');
+
+  const body = await api(`/api/admin/private-rooms/${room}`, { token }).then((r) => r.json());
+
+  assert.equal(body.readable, true);
+  assert.equal(body.messages.length, 1);
+  assert.equal(body.messages[0].text, 'the safe combination is 1234');
+  assert.equal(body.messages[0].decrypted, true);
+  assert.ok(text.startsWith('e2e.v1.'));
+
+  const stored = await mongoose.connection.collection('messages').findOne({ room });
+  assert.ok(stored.text.startsWith('e2e.v1.'), 'the database still holds ciphertext');
+});
+
+test('a room whose key cannot be opened stays sealed rather than erroring', async () => {
+  const room = 'p-foreign-key-abcdef123456';
+
   await mongoose.connection.collection('roomkeys').insertOne({
-    room: 'p-test-room-abcdef123456',
-    wrappedKey: 'd3JhcHBlZC1rZXk=',
+    room,
+    wrappedKey: Buffer.from('not a real wrapped key').toString('base64'),
     createdBy: 'Someone',
     expiresAt: null,
     createdAt: new Date(),
@@ -168,21 +179,22 @@ test('a stored room returns ciphertext and its wrapped key, never plaintext', as
   });
 
   await mongoose.connection.collection('messages').insertOne({
-    room: 'p-test-room-abcdef123456',
+    room,
     username: 'Someone',
     text: 'e2e.v1.aXZpdml2aXY.Y2lwaGVydGV4dA',
     createdAt: new Date(),
     updatedAt: new Date(),
   });
 
-  const body = await api('/api/admin/private-rooms/p-test-room-abcdef123456', { token }).then((r) =>
-    r.json(),
-  );
+  const response = await api(`/api/admin/private-rooms/${room}`, { token });
+  assert.equal(response.status, 200);
 
-  assert.equal(body.wrappedKey, 'd3JhcHBlZC1rZXk=');
-  assert.equal(body.messages.length, 1);
+  const body = await response.json();
+  assert.equal(body.readable, false);
   assert.ok(body.messages[0].text.startsWith('e2e.v1.'));
+});
 
+test('the room list reports how much each room holds', async () => {
   const listed = await api('/api/admin/private-rooms', { token }).then((r) => r.json());
   const entry = listed.rooms.find((room) => room.room === 'p-test-room-abcdef123456');
   assert.equal(entry.messages, 1);

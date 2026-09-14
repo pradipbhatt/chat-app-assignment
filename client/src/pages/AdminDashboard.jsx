@@ -8,7 +8,6 @@ import { PrivateReview } from '../components/PrivateReview.jsx';
 import { RoomInspector } from '../components/RoomInspector.jsx';
 import { SettingsButton } from '../components/SettingsButton.jsx';
 import { SettingsDialog } from '../components/SettingsDialog.jsx';
-import { ReviewKeyProvider } from '../context/ReviewKeyContext.jsx';
 import { connectSocket, getSocket } from '../lib/socket.js';
 
 function SignIn() {
@@ -334,11 +333,5 @@ export function AdminDashboard() {
     );
   }
 
-  return isAdmin ? (
-    <ReviewKeyProvider>
-      <Dashboard />
-    </ReviewKeyProvider>
-  ) : (
-    <SignIn />
-  );
+  return isAdmin ? <Dashboard /> : <SignIn />;
 }

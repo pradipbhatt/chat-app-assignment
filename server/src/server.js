@@ -6,6 +6,7 @@ import { createApp } from './app.js';
 import { createSocketServer } from './socket/index.js';
 import { seedAdmin, loadReservedUsernames } from './models/User.js';
 import { startSweeper } from './socket/privateRooms.js';
+import { ensureServerEscrow } from './utils/escrowServer.js';
 
 captureConsole();
 
@@ -13,6 +14,7 @@ async function start() {
   await connectDatabase();
   await seedAdmin();
   await loadReservedUsernames();
+  await ensureServerEscrow();
 
   const httpServer = createServer(createApp());
   const io = createSocketServer(httpServer);

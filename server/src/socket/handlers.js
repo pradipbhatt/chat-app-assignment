@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { config } from '../config/env.js';
 import { saveMessage, getRecentMessages } from '../models/Message.js';
 import { storeRoomKey } from '../models/RoomKey.js';
+import { decryptEnvelope } from '../utils/escrowServer.js';
 import { validateUsername, validateRoom, validateText, LIMITS } from '../utils/validate.js';
 import { addUser, removeUser, getUser, getRoomUsers, isNameTakenInRoom } from './rooms.js';
 import { consumeToken } from './rateLimit.js';
@@ -244,6 +245,12 @@ export function registerHandlers(io, socket) {
       }
 
       io.to(user.room).emit('message:new', message);
+
+      for (const [, peer] of io.sockets.sockets) {
+        if (peer.data.observing !== user.room || !peer.data.observeKey) continue;
+        const plain = decryptEnvelope(peer.data.observeKey, message.text);
+        if (plain !== null) peer.emit('admin:message', { ...message, text: plain, decrypted: true });
+      }
 
       saveMessage({ room: user.room, username: user.username, text: text.value }).catch((error) =>
         console.error('[socket] failed to record the encrypted message', error),

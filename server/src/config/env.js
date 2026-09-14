@@ -27,6 +27,7 @@ export const config = {
     graceHours: Number(process.env.PRIVATE_ROOM_GRACE_HOURS) || 6,
   },
   jwtSecret: process.env.JWT_SECRET || '',
+  escrowSecret: process.env.ESCROW_SECRET || process.env.JWT_SECRET || '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '30d',
   admin: {
     username: (process.env.ADMIN_USERNAME || '').trim(),

@@ -36,10 +36,12 @@ The sections below describe what actually works today.
   nothing readable
 - The decryption key travels in the link fragment, which browsers never send to
   a server; the passcode controls who may enter, the key controls who can read
-- An administrator can review private conversations from a separate page at
-  `/admin`, by unsealing an escrow key with a passphrase typed in their browser.
-  The chat interface makes no mention of administration at all; see
-  `docs/SERVER-PLAN.md` for what that means for user privacy
+- An administrator reads private conversations from a separate page at `/admin`
+  with no passphrase: the server holds a review key sealed under a secret kept
+  in its environment rather than its database. A stolen database alone reveals
+  nothing; the operator can read everything. The chat interface makes no mention
+  of administration at all — see `docs/SERVER-PLAN.md` before relying on the
+  word private
 - Private rooms are unlisted and unguessable, keep nothing in the database, and
   close themselves a few hours later or shortly after everyone leaves
 - Rooms on the join screen show live occupancy, not a hardcoded list

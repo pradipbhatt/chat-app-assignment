@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { emitWithAck, getSocket } from '../lib/socket.js';
-import { decryptText, isEnvelope } from '../lib/crypto.js';
-import { unwrapRoomKey, readPrivateRoom } from '../lib/escrowBridge.js';
+import { isEnvelope } from '../lib/crypto.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { MessageList } from './MessageList.jsx';
 import { UserList } from './UserList.jsx';
 import { Notice } from './Notice.jsx';
-import { UnlockReview } from './UnlockReview.jsx';
-import { useReviewKey } from '../context/ReviewKeyContext.jsx';
 
 export function RoomInspector({ rooms, onKick, onBan, onClear }) {
-  const { token, account } = useAuth();
-  const { key: escrowKey, status: keyStatus } = useReviewKey();
+  const { account } = useAuth();
+  const [readable, setReadable] = useState(true);
   const [selected, setSelected] = useState('');
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
@@ -23,14 +20,10 @@ export function RoomInspector({ rooms, onKick, onBan, onClear }) {
   const [target, setTarget] = useState(null);
   const [reason, setReason] = useState('');
 
-  const roomKey = useRef(null);
-
-  const decode = useCallback(async (message) => {
-    if (message.system || !isEnvelope(message.text)) return message;
-    if (!roomKey.current) return { ...message, text: null, locked: true };
-    const plain = await decryptText(roomKey.current, message.text);
-    return plain === null ? { ...message, text: null, locked: true } : { ...message, text: plain };
-  }, []);
+  const decode = useCallback(
+    (message) => (isEnvelope(message.text) ? { ...message, text: null, locked: true } : message),
+    [],
+  );
 
   useEffect(() => {
     if (!selected) return undefined;
@@ -38,11 +31,19 @@ export function RoomInspector({ rooms, onKick, onBan, onClear }) {
     let active = true;
     const socket = getSocket();
 
-    const onMessage = async (message) => {
-      const readable = await decode(message);
+    const onMessage = (message) => {
       if (!active) return;
       setCleared(false);
-      setMessages((current) => [...current, readable]);
+      setMessages((current) => [...current, decode(message)]);
+    };
+
+    const onAdminMessage = (message) => {
+      if (!active) return;
+      setCleared(false);
+      setMessages((current) => {
+        const withoutSealed = current.filter((entry) => entry.id !== message.id);
+        return [...withoutSealed, message];
+      });
     };
     const onUsers = (payload) => active && setUsers(payload.users ?? []);
     const onDeleted = (payload) =>
@@ -57,7 +58,6 @@ export function RoomInspector({ rooms, onKick, onBan, onClear }) {
       setState('loading');
       setError(null);
       setCleared(false);
-      roomKey.current = null;
 
       const response = await emitWithAck('admin:observe', { room: selected });
       if (!active) return;
@@ -70,21 +70,13 @@ export function RoomInspector({ rooms, onKick, onBan, onClear }) {
 
       setIsPrivate(Boolean(response.private));
       setUsers(response.users ?? []);
-
-      if (response.private && escrowKey) {
-        try {
-          const stored = await readPrivateRoom(selected, token);
-          if (stored.wrappedKey) roomKey.current = await unwrapRoomKey(escrowKey, stored.wrappedKey);
-        } catch (requestError) {
-          roomKey.current = null;
-        }
-      }
-
-      setMessages(await Promise.all((response.messages ?? []).map(decode)));
+      setReadable(response.readable !== false);
+      setMessages((response.messages ?? []).map(decode));
       setState('ready');
     };
 
     socket.on('message:new', onMessage);
+    socket.on('admin:message', onAdminMessage);
     socket.on('room:users', onUsers);
     socket.on('message:deleted', onDeleted);
     socket.on('room:cleared', onCleared);
@@ -93,12 +85,13 @@ export function RoomInspector({ rooms, onKick, onBan, onClear }) {
     return () => {
       active = false;
       socket.off('message:new', onMessage);
+      socket.off('admin:message', onAdminMessage);
       socket.off('room:users', onUsers);
       socket.off('message:deleted', onDeleted);
       socket.off('room:cleared', onCleared);
       emitWithAck('admin:unobserve');
     };
-  }, [selected, escrowKey, token, decode]);
+  }, [selected, decode]);
 
   const deleteMessage = (id) => emitWithAck('admin:delete-message', { id, room: selected });
 
@@ -160,20 +153,11 @@ export function RoomInspector({ rooms, onKick, onBan, onClear }) {
 
       {selected && state !== 'error' && (
         <>
-          {isPrivate && !roomKey.current && state === 'ready' && (
-            <div className="rounded-clay bg-warning/12 p-4 shadow-clay-in">
-              <p className="text-sm font-bold text-warning">This room is encrypted</p>
-              <p className="mt-0.5 text-xs text-warning/90">
-                {keyStatus === 'absent'
-                  ? 'No review key has been created, so nobody can read this room.'
-                  : 'Unlock the review key to read it here.'}
-              </p>
-              {keyStatus !== 'absent' && (
-                <div className="mt-3">
-                  <UnlockReview compact />
-                </div>
-              )}
-            </div>
+          {isPrivate && !readable && state === 'ready' && (
+            <Notice tone="warning">
+              This room was created before the review key existed, so its messages cannot be
+              opened.
+            </Notice>
           )}
 
           <div className="flex h-[28rem] overflow-hidden rounded-panel bg-bg shadow-clay-in">

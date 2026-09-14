@@ -1,23 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Notice } from './Notice.jsx';
-import { EscrowSetup } from './EscrowSetup.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { decryptText, isEnvelope } from '../lib/crypto.js';
-import { listPrivateRooms, readPrivateRoom, unwrapRoomKey } from '../lib/escrowBridge.js';
-import { useReviewKey } from '../context/ReviewKeyContext.jsx';
-import { UnlockReview } from './UnlockReview.jsx';
+import { isEnvelope } from '../lib/crypto.js';
+import { listPrivateRooms, readPrivateRoom } from '../lib/escrowBridge.js';
 import { formatTime } from '../lib/format.js';
 
 export function PrivateReview({ open }) {
   const { token } = useAuth();
-  const { key: privateKey, status: keyStatus, refresh } = useReviewKey();
   const [rooms, setRooms] = useState([]);
   const [transcript, setTranscript] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!open || keyStatus !== 'open') return;
+    if (!open) return undefined;
 
     let active = true;
     listPrivateRooms(token)
@@ -27,7 +23,7 @@ export function PrivateReview({ open }) {
     return () => {
       active = false;
     };
-  }, [open, keyStatus, token]);
+  }, [open, token]);
 
   const readRoom = async (room) => {
     setBusy(true);
@@ -42,22 +38,12 @@ export function PrivateReview({ open }) {
         return;
       }
 
-      const roomKey = await unwrapRoomKey(privateKey, data.wrappedKey);
-      if (!roomKey) {
-        setTranscript({ room, lines: [], note: 'The review key does not open this room.' });
-        setBusy(false);
-        return;
-      }
+      const lines = data.messages.map((message) => ({
+        ...message,
+        text: isEnvelope(message.text) ? '[sealed — no review key for this room]' : message.text,
+      }));
 
-      const lines = [];
-      for (const message of data.messages) {
-        const text = isEnvelope(message.text)
-          ? await decryptText(roomKey, message.text)
-          : message.text;
-        lines.push({ ...message, text: text ?? '[could not decrypt]' });
-      }
-
-      setTranscript({ room, lines, note: null });
+      setTranscript({ room, lines, note: data.readable === false ? 'This room has no review key.' : null });
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -73,23 +59,7 @@ export function PrivateReview({ open }) {
         Private room review
       </h3>
 
-      {keyStatus === 'checking' && (
-        <p className="text-xs text-fg-subtle">Checking for a review key…</p>
-      )}
-
-      {keyStatus === 'absent' && (
-        <>
-          <p className="text-xs text-fg-muted">
-            No review key exists yet. Until one does, private rooms cannot be read by anyone but
-            their members — including you.
-          </p>
-          <EscrowSetup onDone={refresh} />
-        </>
-      )}
-
-      {keyStatus === 'locked' && <UnlockReview />}
-
-      {keyStatus === 'open' && (
+      {(
         <>
           {error && <Notice tone="danger">{error}</Notice>}
 
