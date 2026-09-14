@@ -22,6 +22,7 @@ export function ChatProvider({ children }) {
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
   const [connection, setConnection] = useState('disconnected');
+  const [unreachable, setUnreachable] = useState(null);
   const [notice, setNotice] = useState(null);
   const [typingUsers, setTypingUsers] = useState([]);
   const [pending, setPending] = useState([]);
@@ -51,6 +52,7 @@ export function ChatProvider({ children }) {
 
     const onConnect = () => {
       setConnection('connected');
+      setUnreachable(null);
       drainRef.current?.();
       if (lastJoin.current) {
         socket.emit('room:join', lastJoin.current, (response) => {
@@ -63,8 +65,18 @@ export function ChatProvider({ children }) {
       }
     };
 
-    const onDisconnect = () => setConnection('disconnected');
+    const describeOutage = () =>
+      typeof navigator !== 'undefined' && navigator.onLine === false ? 'device' : 'server';
+
+    const onDisconnect = (reason) => {
+      setUnreachable(reason === 'io client disconnect' ? null : describeOutage());
+      setConnection(reason === 'io client disconnect' ? 'disconnected' : 'connecting');
+    };
     const onConnecting = () => setConnection('connecting');
+    const onConnectError = () => {
+      setUnreachable(describeOutage());
+      setConnection('connecting');
+    };
     const onMessage = (message) => {
       setRoomCleared(false);
       setMessages((current) => [...current, message]);
@@ -103,6 +115,7 @@ export function ChatProvider({ children }) {
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
+    socket.on('connect_error', onConnectError);
     socket.io.on('reconnect_attempt', onConnecting);
     socket.on('message:new', onMessage);
     socket.on('typing:start', onTypingStart);
@@ -116,6 +129,7 @@ export function ChatProvider({ children }) {
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
+      socket.off('connect_error', onConnectError);
       socket.io.off('reconnect_attempt', onConnecting);
       socket.off('message:new', onMessage);
       socket.off('typing:start', onTypingStart);
@@ -345,6 +359,7 @@ export function ChatProvider({ children }) {
     setTypingUsers([]);
     setPending([]);
     setHasMore(false);
+    setUnreachable(null);
     setConnection('disconnected');
   }, []);
 
@@ -354,6 +369,7 @@ export function ChatProvider({ children }) {
       messages,
       users,
       connection,
+      unreachable,
       notice,
       typingUsers,
       pending,
@@ -376,6 +392,7 @@ export function ChatProvider({ children }) {
       messages,
       users,
       connection,
+      unreachable,
       notice,
       typingUsers,
       pending,

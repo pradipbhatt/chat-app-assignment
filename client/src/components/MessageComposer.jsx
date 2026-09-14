@@ -31,7 +31,7 @@ export function MessageComposer({ onSend, onTyping, typingUsers, disabled, disab
             onChange={change}
             maxLength={2000}
             autoComplete="off"
-            placeholder={disabled ? 'Offline — messages will queue' : 'Write a message'}
+            placeholder={disabled ? 'Write anyway — it will send when reconnected' : 'Write a message'}
             className="flex-1 rounded-full bg-elevated px-5 py-3 text-sm text-fg shadow-clay-in placeholder:text-fg-subtle disabled:cursor-not-allowed disabled:opacity-60"
           />
           <button
@@ -44,7 +44,7 @@ export function MessageComposer({ onSend, onTyping, typingUsers, disabled, disab
         </form>
         {disabled && (
           <p className="mt-2 text-xs text-warning">
-            {disabledReason} They will send as soon as it returns.
+            {disabledReason} Anything you write is queued and sends automatically.
           </p>
         )}
       </div>

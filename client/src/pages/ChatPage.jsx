@@ -20,6 +20,7 @@ export function ChatPage() {
     messages,
     users,
     connection,
+    unreachable,
     notice,
     typingUsers,
     pending,
@@ -67,7 +68,7 @@ export function ChatPage() {
               </span>
             )}
             <span className="hidden text-xs text-fg-subtle sm:inline">·</span>
-            <ConnectionBadge status={connection} />
+            <ConnectionBadge status={connection} unreachable={unreachable} />
           </div>
         </div>
 
@@ -150,7 +151,11 @@ export function ChatPage() {
             onTyping={signalTyping}
             typingUsers={typingUsers}
             disabled={offline}
-            disabledReason="You are offline. Messages cannot be sent until the connection returns."
+            disabledReason={
+              unreachable === 'device'
+                ? 'Your device is offline.'
+                : 'The server is not answering yet — it may be waking up.'
+            }
           />
         </section>
 
