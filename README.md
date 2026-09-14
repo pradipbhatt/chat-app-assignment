@@ -12,12 +12,25 @@ lab, Computer Science, Virginia Tech.
 | Part | State |
 |---|---|
 | Server | Complete — 27 automated tests passing |
-| React client | Not started |
+| React client | Complete — chat, awareness and moderation |
 | Deployment | Not deployed |
 
-The server is finished and verified. The browser interface is the remaining
-work, so there is nothing to look at in a browser yet — the sections below
-describe what actually runs today.
+Both halves run. The sections below describe what actually works today.
+
+## What it does
+
+**For someone using it**
+
+- Pick a display name and a room, and start talking — no sign-up
+- Rooms on the join screen show live occupancy, not a hardcoded list
+- Messages arrive instantly in every window in that room
+- See who is present, and who is typing
+- Every message shows whether it was delivered, with retry if it was not
+- History is replayed on join, and older messages page in on demand
+- Three themes, dark by default, remembered per browser
+- Works down to a 375px phone viewport
+
+**Under that**
 
 ## What the server does
 
@@ -96,6 +109,8 @@ rather than rebuilding.
 **Requirements:** Node.js 20 or newer, and a MongoDB connection string
 (MongoDB Atlas is fine).
 
+### Server
+
 ```bash
 cd server
 npm install
@@ -108,11 +123,31 @@ Fill in `.env`, then:
 npm run dev
 ```
 
-The server listens on `http://localhost:5050`. Check it with:
+It listens on `http://localhost:5050`. Check it with:
 
 ```bash
 curl http://localhost:5050/health
 ```
+
+### Client
+
+In a second terminal:
+
+```bash
+cd client
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Open `http://localhost:5173`. To see the point of the thing, open it in two
+windows and join the same room in both.
+
+### Signing in as an administrator
+
+There are no accounts for chat participants. Moderation needs the account seeded
+from `ADMIN_USERNAME` and `ADMIN_PASSWORD` in the server's `.env`; use **Admin
+sign in** on the join screen. The session is scoped to that browser tab.
 
 ### Configuration
 
@@ -228,10 +263,23 @@ a client puts in a message payload can change it, and a test asserts that.
 ```text
 .
 ├── docs/
+│   ├── DECISIONS.md            assumptions, trade-offs, known limitations
 │   ├── SERVER-PLAN.md          decisions, event contract, rationale
-│   ├── CLIENT-PLAN.md          planned React structure
+│   ├── CLIENT-PLAN.md          React structure
+│   ├── CLIENT-SPRINT.md        build order and checkpoints
 │   ├── FRONTEND-CONVENTIONS.md theming and component rules
+│   ├── VIDEO.md                walkthrough plan
 │   └── INSTRUCTIONS.md         the task as received
+├── client/
+│   ├── index.html              pre-paint theme script
+│   ├── tailwind.config.js      semantic colour tokens
+│   └── src/
+│       ├── context/            theme, auth and chat providers
+│       ├── components/         message list, composer, roster, admin panel
+│       ├── pages/              join and chat
+│       ├── hooks/              rooms, admin actions, auto scroll
+│       ├── lib/                socket, api, validation, formatting
+│       └── styles/             theme token definitions
 └── server/
     ├── src/
     │   ├── server.js           entry: database, http server, socket server
@@ -246,14 +294,23 @@ a client puts in a message payload can change it, and a test asserts that.
     └── test/                   server and admin test suites
 ```
 
-Server source carries no comments by choice; the reasoning that would sit in
-them lives in `docs/SERVER-PLAN.md`, where it can be read as a whole.
+Source carries no comments by choice; the reasoning that would sit in them
+lives in `docs/SERVER-PLAN.md` and `docs/DECISIONS.md`, where it can be read as
+a whole.
+
+## Theming
+
+Colours are never written into components. `client/src/styles/themes.css` holds
+raw RGB channel values per theme, `tailwind.config.js` registers the semantic
+names, and components use only those names — `bg-surface`, `text-fg-muted`,
+`border-border`. Adding a theme means adding one block of values and one entry
+to a list; no component changes. A stray `bg-zinc-800` would be a light-mode bug
+that no theme switch could fix, so there are none.
 
 ## Remaining work
 
-1. React client — join screen, chat view, admin panel
-2. Video walkthrough
-3. Optional deployment: the client on Netlify, the server on a Node host.
+1. Video walkthrough — planned in `docs/VIDEO.md`
+2. Optional deployment: the client on Netlify, the server on a Node host.
    Netlify cannot host the WebSocket server itself
 
 ## Author
