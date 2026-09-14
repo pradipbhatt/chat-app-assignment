@@ -9,10 +9,17 @@ const attempts = new Map();
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 8;
 
+function pruneAttempts(now) {
+  for (const [key, entry] of attempts) {
+    if (now - entry.first > WINDOW_MS) attempts.delete(key);
+  }
+}
+
 function tooManyAttempts(key) {
   const now = Date.now();
   const entry = attempts.get(key);
   if (!entry || now - entry.first > WINDOW_MS) {
+    pruneAttempts(now);
     attempts.set(key, { count: 1, first: now });
     return false;
   }

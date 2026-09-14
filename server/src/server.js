@@ -46,6 +46,14 @@ async function start() {
   }
 }
 
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] unhandled rejection:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('[server] uncaught exception:', error);
+});
+
 start().catch((error) => {
   console.error('[server] failed to start:', error.message);
   process.exit(1);
