@@ -62,33 +62,20 @@ function ModerationRow({ user, onKick, onBan }) {
   );
 }
 
-export function AdminPanel({ open, onClose, room }) {
+export function AdminPanel({ open, onClose, room, embedded = false }) {
   const admin = useAdmin(open);
   const [confirmClear, setConfirmClear] = useState(false);
 
   if (!open) return null;
 
-  return (
-    <aside className="flex w-full max-w-sm shrink-0 flex-col border-l border-border bg-surface">
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div>
-          <h2 className="text-sm font-semibold text-fg">Moderation</h2>
-          {admin.overview.totals && (
-            <p className="text-xs text-fg-subtle">
-              {admin.overview.totals.users} online · {admin.overview.totals.rooms} rooms
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded border border-border px-2 py-1 text-xs text-fg-muted hover:bg-elevated hover:text-fg"
-        >
-          Close
-        </button>
-      </header>
-
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+  const body = (
+    <>
+      <div>
+        {admin.overview.totals && (
+          <p className="mb-3 text-xs text-fg-subtle">
+            {admin.overview.totals.users} online · {admin.overview.totals.rooms} rooms
+          </p>
+        )}
         {admin.error && (
           <div className="mb-3">
             <Notice tone="danger">{admin.error}</Notice>
@@ -184,6 +171,27 @@ export function AdminPanel({ open, onClose, room }) {
           )}
         </div>
       </div>
+    </>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <aside
+      aria-label="Moderation"
+      className="flex w-full max-w-sm shrink-0 flex-col overflow-y-auto border-l border-border bg-surface px-4 py-4"
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-fg">Moderation</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded border border-border px-2 py-1 text-xs text-fg-muted hover:bg-elevated hover:text-fg"
+        >
+          Close
+        </button>
+      </div>
+      {body}
     </aside>
   );
 }

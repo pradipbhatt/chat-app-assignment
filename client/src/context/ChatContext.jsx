@@ -23,6 +23,7 @@ export function ChatProvider({ children }) {
   const [typingUsers, setTypingUsers] = useState([]);
   const [pending, setPending] = useState([]);
   const [hasMore, setHasMore] = useState(false);
+  const [roomCleared, setRoomCleared] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
   const lastJoin = useRef(null);
@@ -55,6 +56,7 @@ export function ChatProvider({ children }) {
     const onDisconnect = () => setConnection('disconnected');
     const onConnecting = () => setConnection('connecting');
     const onMessage = (message) => {
+      setRoomCleared(false);
       setMessages((current) => [...current, message]);
       if (!message.system) {
         setTypingUsers((current) => current.filter((name) => name !== message.username));
@@ -71,6 +73,8 @@ export function ChatProvider({ children }) {
       setMessages((current) => current.filter((message) => message.id !== payload.id));
     const onCleared = () => {
       setMessages([]);
+      setHasMore(false);
+      setRoomCleared(true);
       showNotice('info', 'An administrator cleared this room.');
     };
     const onKicked = (payload) => {
@@ -128,6 +132,7 @@ export function ChatProvider({ children }) {
     setMessages(response.history ?? []);
     setUsers(response.users ?? []);
     setHasMore(Boolean(response.hasMore));
+    setRoomCleared(false);
     setTypingUsers([]);
     setPending([]);
     setConnection('connected');
@@ -258,6 +263,7 @@ export function ChatProvider({ children }) {
       pending,
       hasMore,
       loadingOlder,
+      roomCleared,
       join,
       send,
       leave,
@@ -277,6 +283,7 @@ export function ChatProvider({ children }) {
       pending,
       hasMore,
       loadingOlder,
+      roomCleared,
       join,
       send,
       leave,

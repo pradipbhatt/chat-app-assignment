@@ -13,6 +13,7 @@ export function MessageList({
   onDiscard,
   canModerate,
   onDeleteMessage,
+  roomCleared,
 }) {
   const { containerRef, onScroll, hasNewBelow, scrollToBottom, captureBeforePrepend } =
     useAutoScroll(messages);
@@ -43,10 +44,21 @@ export function MessageList({
 
           {empty && (
             <div className="py-16 text-center">
-              <p className="text-sm text-fg-muted">No messages yet.</p>
-              <p className="mt-1 text-xs text-fg-subtle">
-                Say something, or open this room in another window to see it arrive live.
-              </p>
+              {roomCleared ? (
+                <>
+                  <p className="text-sm text-fg-muted">This room was cleared.</p>
+                  <p className="mt-1 text-xs text-fg-subtle">
+                    An administrator deleted the stored history. New messages will appear here.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-fg-muted">No messages yet.</p>
+                  <p className="mt-1 text-xs text-fg-subtle">
+                    Say something, or open this room in another window to see it arrive live.
+                  </p>
+                </>
+              )}
             </div>
           )}
 
