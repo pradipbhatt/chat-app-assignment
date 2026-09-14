@@ -1,13 +1,23 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="playground">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chat Room</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Karla:wght@400;500;700&family=DM+Mono:wght@500&display=swap"
+    />
     <script>
       try {
         var stored = localStorage.getItem('chat-theme');
-        if (stored) document.documentElement.dataset.theme = stored;
+        var legacy = { dark: 'nightlab', midnight: 'nightlab', light: 'playground' };
+        var resolved = legacy[stored] || stored;
+        if (resolved === 'playground' || resolved === 'bubblegum' || resolved === 'nightlab') {
+          document.documentElement.dataset.theme = resolved;
+        }
       } catch (error) {}
     </script>
   </head>

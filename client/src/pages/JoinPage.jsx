@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { TextField } from '../components/TextField.jsx';
 import { RoomPicker } from '../components/RoomPicker.jsx';
 import { Notice } from '../components/Notice.jsx';
-import { ThemeSwitcher } from '../components/ThemeSwitcher.jsx';
+import { SettingsButton } from '../components/SettingsButton.jsx';
+import { SettingsDialog } from '../components/SettingsDialog.jsx';
 import { useRooms } from '../hooks/useRooms.js';
 import { validateUsername, validateRoom, normaliseRoom } from '../lib/validation.js';
 import { useChat } from '../context/ChatContext.jsx';
@@ -24,6 +25,7 @@ export function JoinPage() {
   const { account, isAdmin, signOut } = useAuth();
 
   const [signInOpen, setSignInOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [room, setRoom] = useState('');
   const [touched, setTouched] = useState({ username: false, room: false });
@@ -66,14 +68,13 @@ export function JoinPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between gap-3 px-6 py-5">
-        <span className="text-sm font-medium text-fg-muted">Chat Room</span>
+        <span className="font-display text-lg font-extrabold text-fg">Chat Room</span>
         <div className="flex items-center gap-2">
-          <ThemeSwitcher />
           {isAdmin ? (
             <button
               type="button"
               onClick={signOut}
-              className="rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-sm text-accent transition-colors hover:bg-accent/20"
+              className="rounded-full bg-accent px-4 py-2 font-display text-sm font-bold text-accent-fg shadow-clay-accent transition-transform hover:-translate-y-0.5"
             >
               {account.username} · sign out
             </button>
@@ -81,17 +82,18 @@ export function JoinPage() {
             <button
               type="button"
               onClick={() => setSignInOpen(true)}
-              className="rounded-md border border-border px-3 py-1.5 text-sm text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
+              className="rounded-full bg-surface px-4 py-2 font-display text-sm font-bold text-fg-muted shadow-clay-sm transition-transform hover:-translate-y-0.5 hover:text-fg"
             >
               Admin sign in
             </button>
           )}
+          <SettingsButton onClick={() => setSettingsOpen(true)} />
         </div>
       </header>
 
       <main className="flex flex-1 items-center justify-center px-6 pb-16">
-        <div className="w-full max-w-md">
-          <h1 className="text-2xl font-semibold tracking-tight text-fg">Join a room</h1>
+        <div className="w-full max-w-md rounded-panel bg-surface p-7 shadow-clay sm:p-8">
+          <h1 className="font-display text-4xl font-extrabold text-fg">Join a room</h1>
           <p className="mt-1.5 text-sm text-fg-muted">
             Pick a name and a room. Anyone in the same room sees your messages instantly.
           </p>
@@ -148,7 +150,7 @@ export function JoinPage() {
             <button
               type="submit"
               disabled={!canSubmit}
-              className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-full bg-accent px-4 py-3 font-display text-base font-bold text-accent-fg shadow-clay-accent transition-transform hover:-translate-y-0.5 active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {joining ? 'Joining…' : 'Join room'}
             </button>
@@ -157,6 +159,7 @@ export function JoinPage() {
       </main>
 
       <AdminSignInDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

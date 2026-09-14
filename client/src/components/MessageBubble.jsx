@@ -11,7 +11,7 @@ export function MessageBubble({ message, own, showAuthor, canModerate, onDelete 
   if (message.system) {
     return (
       <li className="my-2 flex justify-center">
-        <span className="rounded-full bg-elevated px-3 py-1 text-xs text-fg-subtle">
+        <span className="rounded-full bg-elevated px-3.5 py-1.5 text-xs text-fg-subtle shadow-clay-in">
           {message.text}
         </span>
       </li>
@@ -23,7 +23,7 @@ export function MessageBubble({ message, own, showAuthor, canModerate, onDelete 
       <div className="w-8 shrink-0">
         {showAuthor && !own && (
           <span
-            className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
+            className={`flex h-8 w-8 items-center justify-center rounded-full font-display text-xs font-bold shadow-clay-sm ${
               TONE_CLASS[avatarTone(message.username)]
             }`}
           >
@@ -48,8 +48,8 @@ export function MessageBubble({ message, own, showAuthor, canModerate, onDelete 
             </button>
           )}
           <div
-            className={`rounded-bubble px-3.5 py-2 text-sm leading-relaxed ${
-              own ? 'bg-accent text-accent-fg' : 'bg-elevated text-fg'
+            className={`rounded-bubble px-4 py-2.5 text-sm leading-relaxed ${
+              own ? 'bg-accent text-accent-fg shadow-clay-accent' : 'bg-surface text-fg shadow-clay-sm'
             }`}
           >
             <p className="whitespace-pre-wrap break-words">{message.text}</p>

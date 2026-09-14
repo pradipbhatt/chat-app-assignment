@@ -32,14 +32,14 @@ export function SlideOver({ open, onClose, title, children }) {
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="flex w-72 max-w-[85vw] flex-col border-l border-border bg-surface"
+        className="flex w-72 max-w-[85vw] flex-col bg-surface shadow-clay"
       >
-        <header className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold text-fg">{title}</h2>
+        <header className="flex items-center justify-between px-4 py-3.5">
+          <h2 className="font-display text-base font-extrabold text-fg">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded border border-border px-2 py-1 text-xs text-fg-muted hover:bg-elevated hover:text-fg"
+            className="rounded-full bg-elevated px-3 py-1.5 text-xs font-bold text-fg-muted shadow-clay-in hover:text-fg"
           >
             Close
           </button>

@@ -6,8 +6,8 @@ export function PendingMessage({ entry, onRetry, onDiscard }) {
       <div className="w-8 shrink-0" />
       <div className="flex max-w-[78%] flex-col items-end gap-1">
         <div
-          className={`rounded-bubble px-3.5 py-2 text-sm leading-relaxed ${
-            failed ? 'border border-danger/50 bg-danger/10 text-fg' : 'bg-accent/50 text-accent-fg'
+          className={`rounded-bubble px-4 py-2.5 text-sm leading-relaxed ${
+            failed ? 'bg-danger/12 text-fg shadow-clay-in' : 'bg-accent/45 text-accent-fg shadow-clay-sm'
           }`}
         >
           <p className="whitespace-pre-wrap break-words">{entry.text}</p>

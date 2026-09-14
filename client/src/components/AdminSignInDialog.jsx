@@ -36,9 +36,9 @@ export function AdminSignInDialog({ open, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="admin-signin-title"
-        className="w-full max-w-sm rounded-panel border border-border bg-surface p-6 shadow-xl"
+        className="w-full max-w-sm rounded-panel bg-surface p-6 shadow-clay"
       >
-        <h2 id="admin-signin-title" className="text-lg font-semibold text-fg">
+        <h2 id="admin-signin-title" className="font-display text-xl font-extrabold text-fg">
           Administrator sign in
         </h2>
         <p className="mt-1 text-sm text-fg-muted">
@@ -68,14 +68,14 @@ export function AdminSignInDialog({ open, onClose }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-md border border-border px-4 py-2.5 text-sm text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
+              className="flex-1 rounded-full bg-elevated px-4 py-2.5 font-display text-sm font-bold text-fg-muted shadow-clay-in hover:text-fg"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={busy || !username.trim() || !password}
-              className="flex-1 rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-hover disabled:opacity-50"
+              className="flex-1 rounded-full bg-accent px-4 py-2.5 font-display text-sm font-bold text-accent-fg shadow-clay-accent transition-transform hover:-translate-y-0.5 disabled:opacity-50"
             >
               {busy ? 'Signing in…' : 'Sign in'}
             </button>

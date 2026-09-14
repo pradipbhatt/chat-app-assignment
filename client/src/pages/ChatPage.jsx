@@ -5,7 +5,8 @@ import { MessageList } from '../components/MessageList.jsx';
 import { MessageComposer } from '../components/MessageComposer.jsx';
 import { UserList } from '../components/UserList.jsx';
 import { ConnectionBadge } from '../components/ConnectionBadge.jsx';
-import { ThemeSwitcher } from '../components/ThemeSwitcher.jsx';
+import { SettingsButton } from '../components/SettingsButton.jsx';
+import { SettingsDialog } from '../components/SettingsDialog.jsx';
 import { Notice } from '../components/Notice.jsx';
 import { AdminPanel } from '../components/AdminPanel.jsx';
 import { SlideOver } from '../components/SlideOver.jsx';
@@ -34,6 +35,7 @@ export function ChatPage() {
   const { isAdmin } = useAuth();
   const [panelOpen, setPanelOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const offline = connection !== 'connected';
   const canModerate = isAdmin && session.role === 'admin';
@@ -42,9 +44,9 @@ export function ChatPage() {
 
   return (
     <div className="flex h-[100dvh] flex-col">
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-surface px-3 py-3 sm:px-6">
+      <header className="flex items-center justify-between gap-3 bg-surface px-3 py-3 shadow-[0_10px_26px_-20px_var(--clay-drop)] sm:px-6">
         <div className="min-w-0">
-          <h1 className="truncate text-base font-semibold text-fg">#{session.room}</h1>
+          <h1 className="truncate font-display text-xl font-extrabold text-fg">#{session.room}</h1>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className="truncate text-xs text-fg-muted">{session.username}</span>
             {canModerate && (
@@ -58,14 +60,10 @@ export function ChatPage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <div className="hidden lg:block">
-            <ThemeSwitcher />
-          </div>
-
           <button
             type="button"
             onClick={() => setMembersOpen(true)}
-            className="rounded-md border border-border px-2.5 py-1.5 text-sm text-fg-muted transition-colors hover:bg-elevated hover:text-fg md:hidden"
+            className="rounded-full bg-surface px-3.5 py-2 text-sm font-bold text-fg-muted shadow-clay-sm transition-transform hover:-translate-y-0.5 hover:text-fg md:hidden"
           >
             {users.length} online
           </button>
@@ -75,10 +73,10 @@ export function ChatPage() {
               type="button"
               onClick={() => setPanelOpen((value) => !value)}
               aria-pressed={panelOpen}
-              className={`rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
+              className={`rounded-full px-3.5 py-2 font-display text-sm font-bold transition-transform hover:-translate-y-0.5 ${
                 panelOpen
-                  ? 'border-accent bg-accent text-accent-fg'
-                  : 'border-border text-fg-muted hover:bg-elevated hover:text-fg'
+                  ? 'bg-accent text-accent-fg shadow-clay-accent'
+                  : 'bg-surface text-fg-muted shadow-clay-sm hover:text-fg'
               }`}
             >
               Moderate
@@ -88,10 +86,11 @@ export function ChatPage() {
           <button
             type="button"
             onClick={leave}
-            className="rounded-md border border-border px-2.5 py-1.5 text-sm text-fg-muted transition-colors hover:bg-elevated hover:text-fg"
+            className="rounded-full bg-surface px-3.5 py-2 font-display text-sm font-bold text-fg-muted shadow-clay-sm transition-transform hover:-translate-y-0.5 hover:text-fg"
           >
             Leave
           </button>
+          <SettingsButton onClick={() => setSettingsOpen(true)} />
         </div>
       </header>
 
@@ -104,12 +103,9 @@ export function ChatPage() {
       <div className="flex min-h-0 flex-1">
         <aside
           aria-label="People in this room"
-          className="hidden w-60 shrink-0 overflow-y-auto border-r border-border bg-surface px-4 py-5 md:block"
+          className="scrollbar-soft hidden w-60 shrink-0 overflow-y-auto bg-surface px-4 py-5 shadow-[10px_0_26px_-22px_var(--clay-drop)] md:block"
         >
           <UserList users={users} username={session.username} />
-          <div className="mt-6 lg:hidden">
-            <ThemeSwitcher />
-          </div>
         </aside>
 
         <section aria-label="Conversation" className="flex min-w-0 flex-1 flex-col">
@@ -144,10 +140,9 @@ export function ChatPage() {
 
       <SlideOver open={membersOpen} onClose={() => setMembersOpen(false)} title="In this room">
         <UserList users={users} username={session.username} />
-        <div className="mt-6">
-          <ThemeSwitcher />
-        </div>
       </SlideOver>
+
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       {canModerate && (
         <SlideOver open={panelOpen} onClose={() => setPanelOpen(false)} title="Moderation">

@@ -11,7 +11,7 @@ export function RoomPicker({ rooms, status, value, onSelect }) {
 
   if (status === 'error') {
     return (
-      <p className="rounded-md border border-border bg-elevated px-3 py-2 text-xs text-fg-muted">
+      <p className="rounded-clay bg-elevated px-3.5 py-2.5 text-xs text-fg-muted shadow-clay-in">
         Room list unavailable. Type a room name below.
       </p>
     );
@@ -31,10 +31,10 @@ export function RoomPicker({ rooms, status, value, onSelect }) {
             type="button"
             onClick={() => onSelect(entry.room)}
             aria-pressed={selected}
-            className={`group flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors ${
+            className={`group flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-bold transition-transform ${
               selected
-                ? 'border-accent bg-accent text-accent-fg'
-                : 'border-border bg-elevated text-fg-muted hover:border-fg-subtle hover:text-fg'
+                ? 'bg-accent text-accent-fg shadow-clay-accent'
+                : 'bg-surface text-fg-muted shadow-clay-sm hover:-translate-y-0.5 hover:text-fg'
             }`}
           >
             <span>{entry.room}</span>

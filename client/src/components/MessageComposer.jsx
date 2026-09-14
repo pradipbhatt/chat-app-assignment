@@ -18,7 +18,7 @@ export function MessageComposer({ onSend, onTyping, typingUsers, disabled, disab
   };
 
   return (
-    <div className="border-t border-border bg-surface px-4 py-3 sm:px-6">
+    <div className="bg-surface px-4 py-3 shadow-[0_-10px_24px_-18px_var(--clay-drop)] sm:px-6">
       <div className="mx-auto max-w-2xl">
         <TypingIndicator users={typingUsers} />
         <form onSubmit={submit} className="flex items-end gap-2">
@@ -33,12 +33,12 @@ export function MessageComposer({ onSend, onTyping, typingUsers, disabled, disab
             maxLength={2000}
             autoComplete="off"
             placeholder={disabled ? disabledReason : 'Write a message'}
-            className="flex-1 rounded-full border border-border bg-bg px-4 py-2.5 text-sm text-fg placeholder:text-fg-subtle disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 rounded-full bg-elevated px-4.5 py-3 text-sm text-fg shadow-clay-in placeholder:text-fg-subtle disabled:cursor-not-allowed disabled:opacity-60"
           />
           <button
             type="submit"
             disabled={disabled || text.trim().length === 0}
-            className="rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-full bg-accent px-5 py-3 font-display text-sm font-bold text-accent-fg shadow-clay-accent transition-transform hover:-translate-y-0.5 active:translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Send
           </button>

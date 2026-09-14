@@ -6,14 +6,30 @@
 
 @layer base {
   html {
-    color-scheme: dark light;
+    color-scheme: light dark;
   }
 
   body {
     @apply bg-bg text-fg font-sans antialiased;
+    background-image:
+      radial-gradient(circle at 10% 0%, rgb(var(--color-accent) / 0.16), transparent 42%),
+      radial-gradient(circle at 92% 4%, rgb(var(--color-danger) / 0.12), transparent 38%),
+      radial-gradient(circle at 50% 100%, rgb(var(--color-success) / 0.12), transparent 46%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3 {
+    @apply font-display tracking-tight;
   }
 
   :focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-bg;
+  }
+}
+
+@layer utilities {
+  .scrollbar-soft {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-border)) transparent;
   }
 }

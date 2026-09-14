@@ -27,7 +27,11 @@ export function MessageList({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <div ref={containerRef} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+      <div
+        ref={containerRef}
+        onScroll={onScroll}
+        className="scrollbar-soft flex-1 overflow-y-auto px-4 py-5 sm:px-6"
+      >
         <div className="mx-auto flex max-w-2xl flex-col">
           {hasMore && (
             <div className="mb-4 flex justify-center">
@@ -35,7 +39,7 @@ export function MessageList({
                 type="button"
                 onClick={loadOlder}
                 disabled={loadingOlder}
-                className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-fg-muted transition-colors hover:bg-elevated hover:text-fg disabled:opacity-50"
+                className="rounded-full bg-surface px-4 py-2 text-xs font-bold text-fg-muted shadow-clay-sm transition-transform hover:-translate-y-0.5 hover:text-fg disabled:opacity-50"
               >
                 {loadingOlder ? 'Loading…' : 'Load older messages'}
               </button>
@@ -98,7 +102,7 @@ export function MessageList({
         <button
           type="button"
           onClick={() => scrollToBottom()}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-2 text-xs font-medium text-accent-fg shadow-lg"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-accent px-4 py-2.5 font-display text-xs font-bold text-accent-fg shadow-clay-accent"
         >
           New messages ↓
         </button>

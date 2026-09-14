@@ -8,8 +8,8 @@ export function TextField({ id, label, hint, error, ...props }) {
         id={id}
         aria-invalid={error ? 'true' : undefined}
         aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-        className={`w-full rounded-md border bg-bg px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle transition-colors ${
-          error ? 'border-danger' : 'border-border hover:border-fg-subtle'
+        className={`w-full rounded-clay bg-elevated px-3.5 py-2.5 text-sm text-fg shadow-clay-in placeholder:text-fg-subtle disabled:opacity-70 ${
+          error ? 'ring-2 ring-danger' : ''
         }`}
         {...props}
       />

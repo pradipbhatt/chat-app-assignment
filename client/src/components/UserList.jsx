@@ -10,14 +10,14 @@ const TONE_CLASS = {
 export function UserList({ users, username }) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-xs font-medium uppercase tracking-wide text-fg-subtle">
+      <h2 className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-subtle">
         In this room · {users.length}
       </h2>
       <ul className="flex flex-col gap-1.5">
         {users.map((user) => (
           <li key={user.username} className="flex items-center gap-2.5">
             <span
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold ${
+              className={`flex h-8 w-8 items-center justify-center rounded-full font-display text-[11px] font-bold shadow-clay-sm ${
                 TONE_CLASS[avatarTone(user.username)]
               }`}
             >
