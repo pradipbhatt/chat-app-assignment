@@ -46,7 +46,7 @@ export function ChatPage() {
 
   return (
     <div className="flex h-[100dvh] flex-col">
-      <header className="flex items-center justify-between gap-3 bg-surface px-3 py-3 shadow-[0_10px_26px_-20px_var(--clay-drop)] sm:px-6">
+      <header className="flex items-center justify-between gap-3 bg-surface px-4 py-3 shadow-[0_10px_26px_-20px_var(--clay-drop)] sm:px-6">
         <div className="min-w-0">
           <h1 className="truncate font-display text-xl font-extrabold text-fg">#{session.room}</h1>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -97,7 +97,7 @@ export function ChatPage() {
       </header>
 
       {notice && (
-        <div className="px-3 pt-3 sm:px-6">
+        <div className="px-4 pt-3 sm:px-6">
           <Notice tone={notice.tone}>{notice.message}</Notice>
         </div>
       )}

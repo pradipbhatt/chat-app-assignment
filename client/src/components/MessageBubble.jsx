@@ -10,7 +10,7 @@ const TONE_CLASS = {
 export function MessageBubble({ message, own, showAuthor, canModerate, onDelete }) {
   if (message.system) {
     return (
-      <li className="my-2 flex justify-center">
+      <li className="flex justify-center py-1">
         <span className="rounded-full bg-elevated px-3.5 py-1.5 text-xs text-fg-subtle shadow-clay-in">
           {message.text}
         </span>

@@ -32,7 +32,7 @@ export function MessageComposer({ onSend, onTyping, typingUsers, disabled, disab
             maxLength={2000}
             autoComplete="off"
             placeholder={disabled ? 'Offline — messages will queue' : 'Write a message'}
-            className="flex-1 rounded-full bg-elevated px-4.5 py-3 text-sm text-fg shadow-clay-in placeholder:text-fg-subtle disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex-1 rounded-full bg-elevated px-5 py-3 text-sm text-fg shadow-clay-in placeholder:text-fg-subtle disabled:cursor-not-allowed disabled:opacity-60"
           />
           <button
             type="submit"

@@ -44,7 +44,7 @@ export function SlideOver({ open, onClose, title, children }) {
             Close
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
+        <div className="scrollbar-soft flex-1 overflow-y-auto px-4 py-5">{children}</div>
       </div>
     </div>
   );

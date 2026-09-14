@@ -186,7 +186,7 @@ export function AdminPanel({ open, onClose, room, embedded = false }) {
   return (
     <aside
       aria-label="Moderation"
-      className="scrollbar-soft flex w-full max-w-sm shrink-0 flex-col overflow-y-auto bg-surface px-4 py-4 shadow-[-10px_0_26px_-22px_var(--clay-drop)]"
+      className="scrollbar-soft flex w-full max-w-sm shrink-0 flex-col overflow-y-auto bg-surface px-4 py-5 shadow-[-10px_0_26px_-22px_var(--clay-drop)]"
     >
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-display text-base font-extrabold text-fg">Moderation</h2>
