@@ -1,6 +1,6 @@
 # Interview Task — WebSocket Chat Room Application
 
-Source: Professor / Computational Ethics Lab, University of Vermont.
+Source: Prof. Yan Chen, Computer Science Department, Virginia Tech (ych@vt.edu).
 Recorded: 2026-09-14. This file is the authoritative statement of the task.
 
 ## Task
@@ -48,6 +48,20 @@ Explicitly out of scope (listed as future improvements):
 - Persistent message history / database storage
 - User authentication
 - Private messaging, typing indicators, presence, reactions, file sharing
+
+## How this is evaluated (from the recruiting statement)
+
+Worth keeping in view while building — it changes what "good" means here:
+
+- Work is judged on **quality, not task complexity**. A small thing done well
+  beats a large thing done loosely.
+- The brief is **deliberately vague**. Ambiguity is to be resolved with one's
+  own judgment and fair assumptions first, not by asking. Stating those
+  assumptions is part of the deliverable.
+- Any tool or help is allowed, but **every part must be understood** well enough
+  to defend and to maintain long term.
+- It is framed as a puzzle and a sample of lab work, not an exam.
+- Two-week window. Send the video + GitHub links to ych@vt.edu.
 
 ## Notes
 
