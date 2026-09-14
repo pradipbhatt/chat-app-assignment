@@ -256,6 +256,38 @@ test('older messages page through the before cursor', async () => {
   assert.equal(older.messages.at(-1).text, 'one');
 });
 
+test('private rooms never appear in the public room list', async () => {
+  const maker = client();
+  await new Promise((resolve) => {
+    maker.connect();
+    maker.on('connect', resolve);
+  });
+
+  const created = await new Promise((resolve) =>
+    maker.emit('room:create', { username: 'Maker' }, resolve),
+  );
+  await new Promise((resolve) =>
+    maker.emit('room:join', { username: 'Maker', room: created.room, passcode: created.passcode }, resolve),
+  );
+  await new Promise((resolve) => maker.emit('message:send', { text: 'stored' }, resolve));
+  await wait(500);
+
+  const body = await fetch(`${BASE}/api/rooms`).then((response) => response.json());
+  const names = body.rooms.map((entry) => entry.room);
+
+  assert.ok(!names.includes(created.room), 'an occupied private room must not be listed');
+  assert.ok(!names.some((name) => name.startsWith('p-')), 'no private slug may appear');
+
+  maker.disconnect();
+  await wait(600);
+
+  const after = await fetch(`${BASE}/api/rooms`).then((response) => response.json());
+  assert.ok(
+    !after.rooms.some((entry) => entry.room.startsWith('p-')),
+    'a private room with stored history must not be listed either',
+  );
+});
+
 test('the rooms endpoint lists active rooms with occupancy', async () => {
   const name = room();
   const a = client();

@@ -13,7 +13,7 @@ router.get('/rooms', async (_req, res) => {
   try {
     const stored = await getRoomsWithHistory();
     archived = stored
-      .filter((room) => !activeNames.has(room))
+      .filter((room) => !activeNames.has(room) && !isPrivateName(room))
       .map((room) => ({ room, users: 0 }))
       .sort((a, b) => a.room.localeCompare(b.room));
   } catch (error) {
