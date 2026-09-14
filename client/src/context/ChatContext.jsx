@@ -12,7 +12,7 @@ import { normaliseRoom } from '../lib/validation.js';
 
 const ChatContext = createContext(null);
 
-const MAX_NOTICE_AGE_MS = 6000;
+const MAX_NOTICE_AGE_MS = 12000;
 
 export function ChatProvider({ children }) {
   const [session, setSession] = useState(null);

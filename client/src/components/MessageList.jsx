@@ -11,6 +11,8 @@ export function MessageList({
   onLoadOlder,
   onRetry,
   onDiscard,
+  canModerate,
+  onDeleteMessage,
 }) {
   const { containerRef, onScroll, hasNewBelow, scrollToBottom, captureBeforePrepend } =
     useAutoScroll(messages);
@@ -62,6 +64,8 @@ export function MessageList({
                   message={message}
                   own={!message.system && message.username === username}
                   showAuthor={showAuthor}
+                  canModerate={canModerate && !message.system}
+                  onDelete={onDeleteMessage}
                 />
               );
             })}

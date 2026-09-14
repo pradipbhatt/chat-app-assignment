@@ -7,7 +7,7 @@ const TONE_CLASS = {
   danger: 'bg-danger text-bg',
 };
 
-export function MessageBubble({ message, own, showAuthor }) {
+export function MessageBubble({ message, own, showAuthor, canModerate, onDelete }) {
   if (message.system) {
     return (
       <li className="my-2 flex justify-center">
@@ -36,12 +36,34 @@ export function MessageBubble({ message, own, showAuthor }) {
         {showAuthor && !own && (
           <span className="px-1 text-xs font-medium text-fg-muted">{message.username}</span>
         )}
-        <div
-          className={`rounded-bubble px-3.5 py-2 text-sm leading-relaxed ${
-            own ? 'bg-accent text-accent-fg' : 'bg-elevated text-fg'
-          }`}
-        >
-          <p className="whitespace-pre-wrap break-words">{message.text}</p>
+        <div className="group/bubble flex items-center gap-1.5">
+          {canModerate && own && (
+            <button
+              type="button"
+              onClick={() => onDelete(message.id)}
+              aria-label={`Delete message from ${message.username}`}
+              className="rounded px-1.5 py-0.5 text-[11px] text-fg-subtle opacity-0 transition-opacity hover:text-danger group-hover/bubble:opacity-100"
+            >
+              Delete
+            </button>
+          )}
+          <div
+            className={`rounded-bubble px-3.5 py-2 text-sm leading-relaxed ${
+              own ? 'bg-accent text-accent-fg' : 'bg-elevated text-fg'
+            }`}
+          >
+            <p className="whitespace-pre-wrap break-words">{message.text}</p>
+          </div>
+          {canModerate && !own && (
+            <button
+              type="button"
+              onClick={() => onDelete(message.id)}
+              aria-label={`Delete message from ${message.username}`}
+              className="rounded px-1.5 py-0.5 text-[11px] text-fg-subtle opacity-0 transition-opacity hover:text-danger group-hover/bubble:opacity-100"
+            >
+              Delete
+            </button>
+          )}
         </div>
         <span className="px-1 text-[11px] text-fg-subtle">{formatTime(message.ts)}</span>
       </div>

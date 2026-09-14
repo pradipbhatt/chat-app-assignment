@@ -33,3 +33,8 @@ export async function apiRequest(path, { method = 'GET', body, token } = {}) {
 
 export const getHealth = () => apiRequest('/health');
 export const getRooms = () => apiRequest('/api/rooms');
+
+export const login = (username, password) =>
+  apiRequest('/api/auth/login', { method: 'POST', body: { username, password } });
+
+export const getMe = (token) => apiRequest('/api/auth/me', { token });
