@@ -77,7 +77,6 @@ export function ChatPage() {
         <div className="flex shrink-0 items-center gap-2">
           <ShareRoom
             room={session.room}
-            passcode={privateRoom?.passcode ?? null}
             secret={privateRoom?.secret ?? null}
           />
 
@@ -109,8 +108,8 @@ export function ChatPage() {
       {privateRoom && messages.length === 0 && (
         <div className="px-4 pt-3 sm:px-6">
           <Notice tone="info">
-            Private room — messages are encrypted in your browser. Send someone the full invite
-            link and the passcode from Invite. The room closes once everyone leaves.
+            Private room — messages are encrypted in your browser. Send someone the invite link
+            from Invite; it is the only way in. The room closes once everyone leaves.
           </Notice>
         </div>
       )}

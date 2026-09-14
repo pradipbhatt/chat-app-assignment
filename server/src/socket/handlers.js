@@ -13,8 +13,6 @@ import {
   getPrivateRoom,
   markOccupied,
   markEmpty,
-  verifyPasscode,
-  readPasscode,
   appendMessage,
   readMessages,
 } from './privateRooms.js';
@@ -77,7 +75,6 @@ export function registerHandlers(io, socket) {
     return respond({
       ok: true,
       room: created.slug,
-      passcode: created.passcode,
       expiresAt: created.expiresAt,
       private: true,
     });
@@ -123,18 +120,6 @@ export function registerHandlers(io, socket) {
         );
       }
 
-      if (socket.data.role !== ROLES.ADMIN) {
-        const check = verifyPasscode(room.value, payload.passcode, socket.id);
-        if (!check.ok) {
-          const message =
-            check.code === 'PASSCODE_THROTTLED'
-              ? 'Too many wrong passcodes. Wait a few minutes and try again.'
-              : check.code === 'ROOM_EXPIRED'
-                ? 'That private room has closed. Ask for a new link.'
-                : 'That passcode does not match this room.';
-          return finish(reject(socket, respond, check.code, message));
-        }
-      }
     }
 
     const claimedName = username.value.toLowerCase();
@@ -209,7 +194,6 @@ export function registerHandlers(io, socket) {
       hasMore,
       private: Boolean(privateRoom),
       expiresAt: privateRoom ? privateRoom.expiresAt : null,
-      passcode: privateRoom ? readPasscode(room.value) : null,
     };
 
     socket.data.joining = false;

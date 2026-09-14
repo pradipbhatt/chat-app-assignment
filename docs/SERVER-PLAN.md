@@ -268,19 +268,17 @@ the way, because you asked for the administrator to read without one.
   losing it means the sealed private key stays sealed and older rooms become
   permanently unreadable. The setup screen says so before the key is created.
 
-### Passcodes
+### The link is the key
 
-Entry needs **two things**: the link and a six character passcode issued with
-it. A link can be forwarded, screenshotted or logged by a chat client without
-its owner noticing, so the link alone is treated as a weak secret. The passcode
-is generated from an alphabet with `I`, `O`, `0` and `1` removed so it survives
-being read aloud or copied by hand, is compared in constant time, and is
-throttled to six wrong guesses per five minutes per socket. It is redacted from
-the server log like any other secret.
+There is no passcode. A private room is protected by one secret — the slug in
+its link, plus the decryption key in the URL fragment. Anyone holding the full
+link can join and read; anyone without it cannot find the room, because private
+slugs never appear in the room list and guessing one is not practical.
 
-Anyone already inside the room can read the passcode back, so a member can
-re-share it without the creator being present. An authenticated administrator
-enters without it.
+A passcode was tried as a second factor and removed: it split the invite into
+two pieces people had to send separately, and in practice both travelled
+together through the same channel, so it added friction without adding a
+meaningful barrier.
 
 Private rooms live entirely in memory:
 

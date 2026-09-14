@@ -267,7 +267,7 @@ test('private rooms never appear in the public room list', async () => {
     maker.emit('room:create', { username: 'Maker' }, resolve),
   );
   await new Promise((resolve) =>
-    maker.emit('room:join', { username: 'Maker', room: created.room, passcode: created.passcode }, resolve),
+    maker.emit('room:join', { username: 'Maker', room: created.room }, resolve),
   );
   await new Promise((resolve) => maker.emit('message:send', { text: 'stored' }, resolve));
   await wait(500);

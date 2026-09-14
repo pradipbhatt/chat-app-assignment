@@ -12,7 +12,12 @@ import { getEscrowPublicKey } from '../lib/api.js';
 import { wrapRoomKey } from '../lib/escrow.js';
 import { createTokenBucket, sleep, OUTBOX_LIMITS } from '../lib/outbox.js';
 import { normaliseRoom } from '../lib/validation.js';
-import { rememberIdentity } from '../lib/identity.js';
+import {
+  rememberIdentity,
+  rememberSession,
+  forgetSession,
+  readSession,
+} from '../lib/identity.js';
 import { showRoomInUrl, clearRoomFromUrl, readKeyFromUrl } from '../lib/roomLink.js';
 import {
   generateRoomKey,
@@ -39,6 +44,7 @@ export function ChatProvider({ children }) {
   const [hasMore, setHasMore] = useState(false);
   const [roomCleared, setRoomCleared] = useState(false);
   const [privateRoom, setPrivateRoom] = useState(null);
+  const [restoring, setRestoring] = useState(() => Boolean(readSession()));
   const roomKey = useRef(null);
   const roomSecret = useRef('');
   const escrowFlag = useRef(false);
@@ -127,6 +133,7 @@ export function ChatProvider({ children }) {
     };
     const onKicked = (payload) => {
       lastJoin.current = null;
+      forgetSession();
       clearRoomFromUrl();
       setSession(null);
       setMessages([]);
@@ -169,15 +176,11 @@ export function ChatProvider({ children }) {
     };
   }, [showNotice, toReadable]);
 
-  const join = useCallback(async (username, room, passcode = '') => {
+  const join = useCallback(async (username, room) => {
     if (joining.current) return { ok: false, code: 'JOIN_IN_FLIGHT', message: 'Joining…' };
     joining.current = true;
 
-    const payload = {
-      username: String(username).trim(),
-      room: normaliseRoom(room),
-      passcode: String(passcode || '').trim().toUpperCase(),
-    };
+    const payload = { username: String(username).trim(), room: normaliseRoom(room) };
 
     if (normaliseRoom(room).startsWith('p-') && !roomKey.current) {
       const fromLink = readKeyFromUrl();
@@ -200,6 +203,7 @@ export function ChatProvider({ children }) {
     }
 
     rememberIdentity({ username: payload.username, room: payload.room });
+    rememberSession({ username: payload.username, room: response.room, secret: roomSecret.current });
     showRoomInUrl(response.room, roomSecret.current || null);
 
     lastJoin.current = payload;
@@ -208,7 +212,6 @@ export function ChatProvider({ children }) {
       response.private
         ? {
             expiresAt: response.expiresAt,
-            passcode: response.passcode,
             secret: roomSecret.current,
             encrypted: Boolean(roomKey.current),
             reviewable: escrowFlag.current,
@@ -331,6 +334,32 @@ export function ChatProvider({ children }) {
   }, [drain]);
 
   useEffect(() => {
+    const saved = readSession();
+    if (!saved) return;
+
+    let active = true;
+
+    const restore = async () => {
+      if (saved.secret) {
+        roomKey.current = await importRoomKey(saved.secret);
+        roomSecret.current = roomKey.current ? saved.secret : '';
+      }
+
+      const response = await join(saved.username, saved.room);
+      if (!active) return;
+
+      if (!response.ok) forgetSession();
+      setRestoring(false);
+    };
+
+    restore();
+
+    return () => {
+      active = false;
+    };
+  }, [join]);
+
+  useEffect(() => {
     const onPageHide = () => {
       const socket = getSocket();
       if (socket.connected) socket.disconnect();
@@ -449,6 +478,7 @@ export function ChatProvider({ children }) {
     roomKey.current = null;
     roomSecret.current = '';
     escrowFlag.current = false;
+    forgetSession();
     clearRoomFromUrl();
     setSession(null);
     setPrivateRoom(null);
@@ -475,6 +505,7 @@ export function ChatProvider({ children }) {
       loadingOlder,
       roomCleared,
       privateRoom,
+      restoring,
       join,
       createRoom,
       send,
@@ -498,6 +529,7 @@ export function ChatProvider({ children }) {
       loadingOlder,
       roomCleared,
       privateRoom,
+      restoring,
       join,
       createRoom,
       send,

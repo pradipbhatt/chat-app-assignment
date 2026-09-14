@@ -15,8 +15,6 @@ const FRIENDLY = {
   USERNAME_RESERVED: 'That name belongs to a registered account. Pick another one.',
   BANNED: 'You are not able to join that room.',
   ROOM_EXPIRED: 'That private room has closed. Ask whoever shared it for a new link.',
-  PASSCODE_INVALID: 'That passcode does not match this room.',
-  PASSCODE_THROTTLED: 'Too many wrong passcodes. Wait a few minutes and try again.',
   ROOM_CHARSET: 'Use lowercase letters, numbers and hyphens only.',
   TIMEOUT: 'The server did not respond. Check that it is running.',
 };
@@ -32,17 +30,14 @@ export function JoinPage() {
   const [invitedKey] = useState(readKeyFromUrl);
   const [username, setUsername] = useState(remembered.username);
   const [room, setRoom] = useState(invitedRoom || remembered.room);
-  const [passcode, setPasscode] = useState('');
   const [touched, setTouched] = useState({ username: false, room: false });
   const [serverError, setServerError] = useState(null);
   const [joining, setJoining] = useState(false);
 
   const effectiveUsername = username;
-  const needsPasscode = normaliseRoom(room).startsWith('p-');
   const usernameError = validateUsername(effectiveUsername);
   const roomError = validateRoom(room);
-  const canSubmit =
-    !usernameError && !roomError && !joining && (!needsPasscode || passcode.trim().length >= 4);
+  const canSubmit = !usernameError && !roomError && !joining;
 
   const selectRoom = (name) => {
     setRoom(name);
@@ -59,7 +54,7 @@ export function JoinPage() {
 
     dismissNotice();
     setJoining(true);
-    const response = await join(effectiveUsername, room, passcode);
+    const response = await join(effectiveUsername, room);
     setJoining(false);
 
     if (!response.ok) {
@@ -130,7 +125,7 @@ export function JoinPage() {
                       setServerError({ message: created.message || 'Could not create a room.' });
                       return;
                     }
-                    const response = await join(effectiveUsername, created.room, created.passcode);
+                    const response = await join(effectiveUsername, created.room);
                     setJoining(false);
                     if (!response.ok) {
                       setServerError({ message: FRIENDLY[response.code] || response.message });
@@ -158,27 +153,11 @@ export function JoinPage() {
               />
             </div>
 
-            {needsPasscode && !invitedKey && (
+            {invitedRoom && !invitedKey && (
               <Notice tone="warning">
-                This link has no decryption key. You can still join, but messages will stay
-                unreadable — ask for the full invite link.
+                This link is missing its key, so messages will stay unreadable. Ask for the full
+                invite link.
               </Notice>
-            )}
-
-            {needsPasscode && (
-              <TextField
-                id="passcode"
-                label="Room passcode"
-                placeholder="ABC234"
-                autoComplete="off"
-                maxLength={6}
-                value={passcode}
-                hint="Shared by whoever created the room, alongside the link."
-                onChange={(event) => {
-                  setPasscode(event.target.value.toUpperCase());
-                  setServerError(null);
-                }}
-              />
             )}
 
             {serverError && <Notice tone="danger">{serverError.message}</Notice>}

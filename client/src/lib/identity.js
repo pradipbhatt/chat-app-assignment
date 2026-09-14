@@ -21,3 +21,33 @@ export function readIdentity() {
     return { username: '', room: '' };
   }
 }
+
+const SESSION_KEY = 'chat-session';
+
+export function rememberSession({ username, room, secret }) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ username, room, secret: secret || '' }));
+  } catch (error) {
+    return;
+  }
+}
+
+export function readSession() {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+    if (!stored || typeof stored.username !== 'string' || typeof stored.room !== 'string') {
+      return null;
+    }
+    return stored;
+  } catch (error) {
+    return null;
+  }
+}
+
+export function forgetSession() {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch (error) {
+    return;
+  }
+}

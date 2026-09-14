@@ -19,7 +19,7 @@ const currentRoute = () => {
 };
 
 export default function App() {
-  const { session } = useChat();
+  const { session, restoring } = useChat();
   const [route, setRoute] = useState(currentRoute);
 
   useEffect(() => {
@@ -30,6 +30,14 @@ export default function App() {
 
   if (route === 'admin') return <AdminDashboard />;
   if (route === 'status') return <StatusPage />;
+
+  if (restoring && !session) {
+    return (
+      <main className="flex min-h-[100dvh] items-center justify-center">
+        <p className="text-sm text-fg-muted">Rejoining your room…</p>
+      </main>
+    );
+  }
 
   return session ? <ChatPage /> : <JoinPage />;
 }
