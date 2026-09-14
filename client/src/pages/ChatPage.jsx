@@ -5,6 +5,7 @@ import { MessageList } from '../components/MessageList.jsx';
 import { MessageComposer } from '../components/MessageComposer.jsx';
 import { UserList } from '../components/UserList.jsx';
 import { ConnectionBadge } from '../components/ConnectionBadge.jsx';
+import { ShareRoom } from '../components/ShareRoom.jsx';
 import { SettingsButton } from '../components/SettingsButton.jsx';
 import { SettingsDialog } from '../components/SettingsDialog.jsx';
 import { Notice } from '../components/Notice.jsx';
@@ -62,6 +63,8 @@ export function ChatPage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <ShareRoom room={session.room} />
+
           <button
             type="button"
             onClick={() => setMembersOpen(true)}

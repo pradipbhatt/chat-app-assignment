@@ -11,6 +11,7 @@ import { getSocket, connectSocket, emitWithAck } from '../lib/socket.js';
 import { createTokenBucket, sleep, OUTBOX_LIMITS } from '../lib/outbox.js';
 import { normaliseRoom } from '../lib/validation.js';
 import { rememberIdentity } from '../lib/identity.js';
+import { showRoomInUrl, clearRoomFromUrl } from '../lib/roomLink.js';
 
 const ChatContext = createContext(null);
 
@@ -87,6 +88,7 @@ export function ChatProvider({ children }) {
     };
     const onKicked = (payload) => {
       lastJoin.current = null;
+      clearRoomFromUrl();
       setSession(null);
       setMessages([]);
       setUsers([]);
@@ -145,6 +147,7 @@ export function ChatProvider({ children }) {
     }
 
     rememberIdentity(payload);
+    showRoomInUrl(response.room);
 
     lastJoin.current = payload;
     setSession({ room: response.room, username: response.username, role: response.role });
@@ -327,6 +330,7 @@ export function ChatProvider({ children }) {
     socket.disconnect();
     lastJoin.current = null;
     outbox.current = [];
+    clearRoomFromUrl();
     setSession(null);
     setMessages([]);
     setUsers([]);

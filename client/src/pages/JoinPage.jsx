@@ -7,6 +7,7 @@ import { SettingsDialog } from '../components/SettingsDialog.jsx';
 import { useRooms } from '../hooks/useRooms.js';
 import { validateUsername, validateRoom, normaliseRoom } from '../lib/validation.js';
 import { readIdentity } from '../lib/identity.js';
+import { readRoomFromUrl, suggestRoomName } from '../lib/roomLink.js';
 import { useChat } from '../context/ChatContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { AdminSignInDialog } from '../components/AdminSignInDialog.jsx';
@@ -28,8 +29,9 @@ export function JoinPage() {
   const [signInOpen, setSignInOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [remembered] = useState(readIdentity);
+  const [invitedRoom] = useState(readRoomFromUrl);
   const [username, setUsername] = useState(remembered.username);
-  const [room, setRoom] = useState(remembered.room);
+  const [room, setRoom] = useState(invitedRoom || remembered.room);
   const [touched, setTouched] = useState({ username: false, room: false });
   const [serverError, setServerError] = useState(null);
   const [joining, setJoining] = useState(false);
@@ -95,9 +97,13 @@ export function JoinPage() {
 
       <main className="flex flex-1 items-center justify-center px-6 pb-16">
         <div className="w-full max-w-md rounded-panel bg-surface p-7 shadow-clay sm:p-8">
-          <h1 className="font-display text-4xl font-extrabold text-fg">Join a room</h1>
+          <h1 className="font-display text-4xl font-extrabold text-fg">
+            {invitedRoom ? `Join #${invitedRoom}` : 'Join a room'}
+          </h1>
           <p className="mt-1.5 text-sm text-fg-muted">
-            Pick a name and a room. Anyone in the same room sees your messages instantly.
+            {invitedRoom
+              ? 'Someone shared this room with you. Pick a name to come in.'
+              : 'Pick a name and a room. Anyone in the same room sees your messages instantly.'}
           </p>
 
           {notice && (
@@ -129,7 +135,20 @@ export function JoinPage() {
             />
 
             <div className="flex flex-col gap-3">
-              <span className="text-sm font-medium text-fg">Room</span>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-fg">Room</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRoom(suggestRoomName());
+                    setTouched((state) => ({ ...state, room: true }));
+                    setServerError(null);
+                  }}
+                  className="rounded-full bg-elevated px-3 py-1.5 text-xs font-bold text-fg-muted shadow-clay-in hover:text-fg"
+                >
+                  Start a new room
+                </button>
+              </div>
               <RoomPicker rooms={rooms} status={status} value={normaliseRoom(room)} onSelect={selectRoom} />
               <TextField
                 id="room"
