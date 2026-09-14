@@ -209,6 +209,38 @@ Someone with the passcode but a link stripped of its fragment joins the room and
 sees every message as `Encrypted — you do not have the key`. The interface warns
 them before they join and badges the room `no key` rather than pretending.
 
+### Administrator review, and what it costs
+
+An administrator can read private rooms — and because that is true, the room
+says so. The private room notice reads *"Encrypted in your browser — and an
+administrator can open this room for review"*, permanently, not only while the
+room is empty. An interface that called this end to end while an administrator
+could read it would be lying to the people relying on it.
+
+It works by escrow rather than by handing the server a key:
+
+1. The administrator generates an RSA-OAEP keypair **in their browser**. The
+   public half is stored and served openly; the private half is sealed with
+   AES-GCM under a key derived from a review passphrase (PBKDF2, 250k rounds)
+   that is typed in the browser and never transmitted.
+2. When a private room is created, the client wraps that room's AES key with the
+   escrow public key and sends only the wrapped blob.
+3. Messages are persisted as ciphertext, so a conversation can be reviewed after
+   the room has closed.
+4. To read one, the administrator types the review passphrase, which unseals the
+   private key in the browser, unwraps the room key, and decrypts locally.
+
+The property this buys, and it is the whole point: **the admin token alone is
+not enough.** Someone holding the JWT, or a full database dump, gets ciphertext
+and a passphrase-sealed private key. Verified by fetching the review endpoint
+with a valid admin token and reading the raw collections — both return
+envelopes.
+
+**This reverses an earlier decision.** Private rooms previously stored nothing
+at all. Reviewable conversations have to exist to be reviewed, so their
+ciphertext is now persisted. The property is no longer "nothing in the
+database"; it is "nothing readable in the database".
+
 **What this does not cover, stated plainly:**
 
 - **Only private rooms.** Public rooms have no shared secret and stay plaintext.
@@ -219,6 +251,11 @@ them before they join and badges the room `no key` rather than pretending.
   a version that leaks the key. Browser-delivered encryption protects stored and
   relayed data against the operator — it cannot protect against one who tampers
   with the application. Claiming otherwise would be dishonest.
+- **Not from an administrator who chooses to look.** With escrow configured,
+  that is the deliberate design, and the room discloses it.
+- **The review passphrase cannot be recovered.** It never reaches the server, so
+  losing it means the sealed private key stays sealed and older rooms become
+  permanently unreadable. The setup screen says so before the key is created.
 
 ### Passcodes
 

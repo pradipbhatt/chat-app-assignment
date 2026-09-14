@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { config } from '../config/env.js';
 import { saveMessage, getRecentMessages } from '../models/Message.js';
+import { storeRoomKey } from '../models/RoomKey.js';
 import { validateUsername, validateRoom, validateText, LIMITS } from '../utils/validate.js';
 import { addUser, removeUser, getUser, getRoomUsers, isNameTakenInRoom } from './rooms.js';
 import { consumeToken } from './rateLimit.js';
@@ -51,13 +52,27 @@ export function registerHandlers(io, socket) {
     if (user && !silent) socket.to(user.room).emit('typing:stop', { username: user.username });
   };
 
-  socket.on('room:create', (payload = {}, ack) => {
+  socket.on('room:create', async (payload = {}, ack) => {
     const respond = callable(ack);
 
     const username = validateUsername(payload.username);
     if (!username.ok) return respond({ ok: false, code: username.code, message: username.message });
 
     const created = createPrivateRoom(username.value);
+
+    if (typeof payload.wrappedKey === 'string' && payload.wrappedKey.length > 0) {
+      try {
+        await storeRoomKey({
+          room: created.slug,
+          wrappedKey: payload.wrappedKey.slice(0, 4000),
+          createdBy: username.value,
+          expiresAt: created.expiresAt,
+        });
+      } catch (error) {
+        console.error('[socket] failed to store the wrapped room key', error);
+      }
+    }
+
     return respond({
       ok: true,
       room: created.slug,
@@ -238,7 +253,13 @@ export function registerHandlers(io, socket) {
       if (!message) {
         return reject(socket, respond, 'ROOM_EXPIRED', 'That private room has closed.');
       }
+
       io.to(user.room).emit('message:new', message);
+
+      saveMessage({ room: user.room, username: user.username, text: text.value }).catch((error) =>
+        console.error('[socket] failed to record the encrypted message', error),
+      );
+
       return respond({ ok: true, id: message.id, ts: message.ts });
     }
 

@@ -8,6 +8,8 @@ import {
   useState,
 } from 'react';
 import { getSocket, connectSocket, emitWithAck } from '../lib/socket.js';
+import { getEscrowPublicKey } from '../lib/api.js';
+import { wrapRoomKey } from '../lib/escrow.js';
 import { createTokenBucket, sleep, OUTBOX_LIMITS } from '../lib/outbox.js';
 import { normaliseRoom } from '../lib/validation.js';
 import { rememberIdentity } from '../lib/identity.js';
@@ -39,6 +41,7 @@ export function ChatProvider({ children }) {
   const [privateRoom, setPrivateRoom] = useState(null);
   const roomKey = useRef(null);
   const roomSecret = useRef('');
+  const escrowFlag = useRef(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
   const lastJoin = useRef(null);
@@ -204,6 +207,7 @@ export function ChatProvider({ children }) {
             passcode: response.passcode,
             secret: roomSecret.current,
             encrypted: Boolean(roomKey.current),
+            reviewable: escrowFlag.current,
           }
         : null,
     );
@@ -398,16 +402,32 @@ export function ChatProvider({ children }) {
     }
 
     connectSocket();
+
+    const generated = await generateRoomKey();
+
+    let wrappedKey = '';
+    let escrowed = false;
+    try {
+      const escrow = await getEscrowPublicKey();
+      if (escrow?.escrow?.publicKeyJwk) {
+        wrappedKey = await wrapRoomKey(escrow.escrow.publicKeyJwk, generated.secret);
+        escrowed = true;
+      }
+    } catch (error) {
+      wrappedKey = '';
+    }
+
     const response = await emitWithAck('room:create', {
       username: String(username || 'guest').trim(),
+      wrappedKey,
     });
     if (!response.ok) return response;
 
-    const generated = await generateRoomKey();
     roomKey.current = generated.key;
     roomSecret.current = generated.secret;
 
-    return { ...response, secret: generated.secret };
+    escrowFlag.current = escrowed;
+    return { ...response, secret: generated.secret, escrowed };
   }, []);
 
   const leave = useCallback(() => {
@@ -418,6 +438,7 @@ export function ChatProvider({ children }) {
     outbox.current = [];
     roomKey.current = null;
     roomSecret.current = '';
+    escrowFlag.current = false;
     clearRoomFromUrl();
     setSession(null);
     setPrivateRoom(null);

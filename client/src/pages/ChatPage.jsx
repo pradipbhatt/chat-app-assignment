@@ -57,7 +57,7 @@ export function ChatPage() {
               <span
                 title={
                   privateRoom.encrypted
-                    ? 'End to end encrypted. The server stores ciphertext it cannot read.'
+                    ? 'Encrypted in your browser. An administrator with the review key can open it.'
                     : 'Private, but this tab has no key so messages cannot be read.'
                 }
                 className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide shadow-clay-in ${
@@ -125,12 +125,21 @@ export function ChatPage() {
         </div>
       )}
 
+      {privateRoom && (
+        <div className="px-4 pt-3 sm:px-6">
+          <Notice tone={privateRoom.reviewable ? 'warning' : 'info'}>
+            {privateRoom.reviewable
+              ? 'Encrypted in your browser — and an administrator can open this room for review.'
+              : 'Encrypted in your browser. Only people with the link and passcode can read it.'}
+          </Notice>
+        </div>
+      )}
+
       {privateRoom && messages.length === 0 && (
         <div className="px-4 pt-3 sm:px-6">
           <Notice tone="info">
-            Private room — messages are encrypted in your browser, so the server only ever holds
-            ciphertext. Send someone the full invite link and the passcode from Invite. Nothing is
-            stored, and the room closes once everyone leaves.
+            Send someone the full invite link and the passcode from Invite. The room closes once
+            everyone leaves.
           </Notice>
         </div>
       )}

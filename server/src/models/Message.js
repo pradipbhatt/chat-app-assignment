@@ -4,7 +4,7 @@ const messageSchema = new mongoose.Schema(
   {
     room: { type: String, required: true, trim: true, lowercase: true, index: true },
     username: { type: String, required: true, trim: true, maxlength: 24 },
-    text: { type: String, required: true, trim: true, maxlength: 2000 },
+    text: { type: String, required: true, trim: true, maxlength: 6000 },
   },
   { timestamps: true },
 );
