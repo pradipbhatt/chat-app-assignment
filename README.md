@@ -1,0 +1,265 @@
+# Real-Time WebSocket Chat Room
+
+A chat room where several people join a named room and exchange messages
+instantly over a persistent WebSocket connection, with an authenticated
+administrator who can moderate what happens in it.
+
+Built for the WebSocket Chat Room Application task from Prof. Yan Chen's PRIME
+lab, Computer Science, Virginia Tech.
+
+## Status
+
+| Part | State |
+|---|---|
+| Server | Complete — 27 automated tests passing |
+| React client | Not started |
+| Deployment | Not deployed |
+
+The server is finished and verified. The browser interface is the remaining
+work, so there is nothing to look at in a browser yet — the sections below
+describe what actually runs today.
+
+## What the server does
+
+**Chat**
+
+- Named rooms, with messages delivered only to the room they were sent in
+- Instant broadcast to every client in the room, sender included
+- Live roster of who is present, updated on join, leave and disconnect
+- Typing indicators that expire on their own if a client vanishes mid-sentence
+- Message history stored in MongoDB and replayed to whoever joins next
+- Paging back through older messages with a cursor
+- Per-message acknowledgement, so a client can show sending / sent / failed
+
+**Moderation**
+
+- One authenticated administrator account, seeded from the environment
+- Live view of every connected user and room
+- Kick a user, ban them (per room or everywhere, permanently or for a period),
+  delete a single message, or wipe a room's history
+- Bans are stored, so they outlive a restart, and expire on their own
+
+**Safeguards**
+
+- Every value from a client is validated; a bad payload is refused, never thrown
+- Rate limit of 5 messages per second per user, which reconnecting does not reset
+- Socket and JSON payloads capped at 16KB
+- Registered account names cannot be claimed by anonymous users
+- Roles come only from a verified token, never from anything a client sends
+
+## Architecture
+
+```text
+   ┌──────────────┐        ┌──────────────┐        ┌──────────────┐
+   │   User A     │        │   User B     │        │    Admin     │
+   │   browser    │        │   browser    │        │   browser    │
+   └──────┬───────┘        └──────┬───────┘        └──────┬───────┘
+          │                       │                       │
+          │  WebSocket            │  WebSocket            │  WebSocket + JWT
+          └───────────┬───────────┘                       │
+                      │                                   │
+              ┌───────▼───────────────────────────────────▼───────┐
+              │              Node.js  ·  Express  ·  Socket.IO    │
+              │                                                   │
+              │   handshake auth  →  role on the socket           │
+              │   rooms, presence, typing      (in memory)        │
+              │   validation, rate limiting                       │
+              │   moderation service                              │
+              └───────────────────────┬───────────────────────────┘
+                                      │
+                              ┌───────▼────────┐
+                              │    MongoDB     │
+                              │  messages      │
+                              │  users, bans   │
+                              └────────────────┘
+```
+
+Presence is deliberately in memory: who is online right now is not worth
+persisting, and a stale roster after a crash is worse than an empty one.
+Messages, accounts and bans go to MongoDB, so they survive a restart.
+
+## Technology
+
+Node.js 20 · Express · Socket.IO · MongoDB with Mongoose · JSON Web Tokens ·
+bcrypt · Node's built-in test runner.
+
+The client will be React with Vite and Tailwind CSS.
+
+Socket.IO is used rather than a bare `ws` server. Its default transport is a
+real WebSocket — the test suite asserts the negotiated transport is `websocket`
+and not the long-polling fallback — and it supplies rooms, acknowledgements and
+reconnection, which are the parts of this task worth spending attention on
+rather than rebuilding.
+
+## Running it
+
+**Requirements:** Node.js 20 or newer, and a MongoDB connection string
+(MongoDB Atlas is fine).
+
+```bash
+cd server
+npm install
+cp .env.example .env
+```
+
+Fill in `.env`, then:
+
+```bash
+npm run dev
+```
+
+The server listens on `http://localhost:5050`. Check it with:
+
+```bash
+curl http://localhost:5050/health
+```
+
+### Configuration
+
+| Variable | Purpose |
+|---|---|
+| `PORT` | Port for both the REST routes and the WebSocket handshake. Defaults to 5050 — **not** 5000, which macOS uses for AirPlay Receiver |
+| `CLIENT_URL` | Allowed CORS origin. Accepts a comma-separated list for deployment |
+| `MONGODB_URI` | MongoDB connection string, including the database name |
+| `HISTORY_LIMIT` | Messages replayed when someone joins a room |
+| `MAX_PAYLOAD_BYTES` | Cap on socket and JSON payloads |
+| `RATE_LIMIT_CAPACITY` / `RATE_LIMIT_REFILL_PER_SECOND` | Message rate limit |
+| `SHUTDOWN_TIMEOUT_MS` | How long a graceful shutdown may take before forcing exit |
+| `JWT_SECRET` / `JWT_EXPIRES_IN` | Token signing |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | The admin account, re-seeded from these on every boot |
+
+`.env` is git-ignored and never committed. `.env.example` holds placeholders
+only.
+
+## Tests
+
+```bash
+cd server
+npm test
+```
+
+27 tests across two files. They spawn a real server, talk to it as real
+clients, run against their own `chatapp_test` and `chatapp_admin_test`
+databases, and drop those databases afterwards, so application data is never
+touched.
+
+- `test/server.test.js` — transport, rooms, isolation, roster, typing,
+  validation, rate limiting, history, pagination, REST routes, shutdown
+- `test/admin.test.js` — login, forged and missing tokens, privilege escalation
+  attempts, reserved account names, kick, ban and rejoin, message deletion,
+  room clearing, login rate limiting
+
+## Socket events
+
+**Client to server** — every one answers through an acknowledgement of
+`{ ok: true, ... }` or `{ ok: false, code, message }`.
+
+| Event | Payload |
+|---|---|
+| `room:join` | `{ username, room }` |
+| `message:send` | `{ text }` |
+| `messages:load` | `{ limit, before }` |
+| `typing:start` / `typing:stop` | — |
+| `room:leave` | — |
+| `admin:overview` | — |
+| `admin:kick` | `{ username, room, reason }` |
+| `admin:ban` | `{ username, room, reason, minutes }` |
+| `admin:unban` | `{ id }` |
+| `admin:bans` | — |
+| `admin:delete-message` | `{ id }` |
+| `admin:clear-room` | `{ room }` |
+
+**Server to client**
+
+| Event | Payload |
+|---|---|
+| `room:joined` | `{ room, username, role, users[], history[], hasMore }` |
+| `message:new` | `{ id, username, text, ts, system }` |
+| `message:deleted` | `{ id, by }` |
+| `room:users` | `{ users: [{ username, role }] }` |
+| `room:cleared` | `{ room, by }` |
+| `typing:start` / `typing:stop` | `{ username }` |
+| `moderation:kicked` | `{ reason, by }` |
+| `error:app` | `{ code, message }` |
+
+Message `id` and `ts` are always assigned by the server. A client's clock never
+decides the order a room sees.
+
+## REST API
+
+| Route | Access | Purpose |
+|---|---|---|
+| `GET /health` | public | status, uptime, database state, counts |
+| `GET /api/rooms` | public | active rooms with occupancy, then rooms with only history |
+| `GET /api/rooms/:room/messages?limit=&before=` | public | a page of history |
+| `POST /api/auth/login` | public | returns a token and the account |
+| `GET /api/auth/me` | token | the current account |
+| `GET /api/admin/overview` | admin | live rooms and users |
+| `POST /api/admin/kick` | admin | disconnect a user |
+| `POST /api/admin/ban` | admin | ban a user |
+| `GET /api/admin/bans` · `DELETE /api/admin/bans/:id` | admin | list and lift bans |
+| `DELETE /api/admin/messages/:id` | admin | delete one message |
+| `POST /api/admin/rooms/:room/clear` | admin | wipe a room's history |
+
+## Roles
+
+Two roles, `user` and `admin`.
+
+Regular users stay anonymous: type a name, join. Requiring registration would
+break the join flow the task is about, so identity for participants is
+deliberately light.
+
+An administrator is a real account with a bcrypt-hashed password. Signing in
+returns a token, sent as `Authorization: Bearer` on REST and as
+`socket.handshake.auth.token` on the socket. The role is derived from that token
+in a single place — the handshake middleware — and stored on the socket. Nothing
+a client puts in a message payload can change it, and a test asserts that.
+
+**Known limitations, stated rather than hidden:**
+
+- A ban is on a name, not a person. Anonymous users can return under a new name.
+  Preventing that means accounts for everyone, which is out of scope here.
+- A role is resolved once at the handshake, so a token expiring mid-session
+  keeps its role until the socket reconnects.
+- There is no token revocation; signing out is the client discarding the token.
+
+## Project structure
+
+```text
+.
+├── docs/
+│   ├── SERVER-PLAN.md          decisions, event contract, rationale
+│   ├── CLIENT-PLAN.md          planned React structure
+│   ├── FRONTEND-CONVENTIONS.md theming and component rules
+│   └── INSTRUCTIONS.md         the task as received
+└── server/
+    ├── src/
+    │   ├── server.js           entry: database, http server, socket server
+    │   ├── app.js              express app and route mounting
+    │   ├── config/             environment and database connection
+    │   ├── models/             Message, User, Ban
+    │   ├── routes/             health, auth, admin, rooms, messages
+    │   ├── middleware/         token authentication and role guards
+    │   ├── services/           moderation actions shared by REST and socket
+    │   ├── socket/             handshake auth, handlers, presence, rate limit
+    │   └── utils/              validation and tokens
+    └── test/                   server and admin test suites
+```
+
+Server source carries no comments by choice; the reasoning that would sit in
+them lives in `docs/SERVER-PLAN.md`, where it can be read as a whole.
+
+## Remaining work
+
+1. React client — join screen, chat view, admin panel
+2. Video walkthrough
+3. Optional deployment: the client on Netlify, the server on a Node host.
+   Netlify cannot host the WebSocket server itself
+
+## Author
+
+**Pradip Bhatt** — B.E. Computer Engineering, Far Western University, Nepal
+
+[Portfolio](https://www.pradipbhatt.com.np) ·
+[GitHub](https://github.com/pradipbhatt) ·
+[LinkedIn](https://www.linkedin.com/in/pradipbhatt2126/)
