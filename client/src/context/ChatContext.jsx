@@ -143,11 +143,15 @@ export function ChatProvider({ children }) {
     };
   }, [showNotice]);
 
-  const join = useCallback(async (username, room) => {
+  const join = useCallback(async (username, room, passcode = '') => {
     if (joining.current) return { ok: false, code: 'JOIN_IN_FLIGHT', message: 'Joining…' };
     joining.current = true;
 
-    const payload = { username: String(username).trim(), room: normaliseRoom(room) };
+    const payload = {
+      username: String(username).trim(),
+      room: normaliseRoom(room),
+      passcode: String(passcode || '').trim().toUpperCase(),
+    };
 
     setConnection('connecting');
     connectSocket();
@@ -161,12 +165,14 @@ export function ChatProvider({ children }) {
       return response;
     }
 
-    rememberIdentity(payload);
+    rememberIdentity({ username: payload.username, room: payload.room });
     showRoomInUrl(response.room);
 
     lastJoin.current = payload;
     setSession({ room: response.room, username: response.username, role: response.role });
-    setPrivateRoom(response.private ? { expiresAt: response.expiresAt } : null);
+    setPrivateRoom(
+      response.private ? { expiresAt: response.expiresAt, passcode: response.passcode } : null,
+    );
     setMessages(response.history ?? []);
     setUsers(response.users ?? []);
     setHasMore(Boolean(response.hasMore));

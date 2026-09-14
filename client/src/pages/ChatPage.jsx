@@ -73,7 +73,7 @@ export function ChatPage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <ShareRoom room={session.room} />
+          <ShareRoom room={session.room} passcode={privateRoom?.passcode ?? null} />
 
           <button
             type="button"
@@ -118,8 +118,8 @@ export function ChatPage() {
       {privateRoom && messages.length === 0 && (
         <div className="px-4 pt-3 sm:px-6">
           <Notice tone="info">
-            Private room — only people you send the link to can join. Messages are not stored, and
-            the room closes once everyone leaves.
+            Private room — joining needs both the link and the passcode, which you can copy from
+            Invite. Messages are not stored, and the room closes once everyone leaves.
           </Notice>
         </div>
       )}

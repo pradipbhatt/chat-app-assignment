@@ -10,7 +10,7 @@ const REDACTIONS = [
   [/(mongodb(?:\+srv)?:\/\/)[^@\s]+@/gi, '$1***:***@'],
   [/(bearer\s+)[A-Za-z0-9._-]+/gi, '$1***'],
   [/eyJ[A-Za-z0-9._-]{10,}/g, '***'],
-  [/("?(?:password|secret|token|authorization)"?\s*[:=]\s*)("?)[^\s,"}]+\2/gi, '$1$2***$2'],
+  [/("?(?:password|passcode|secret|token|authorization)"?\s*[:=]\s*)("?)[^\s,"}]+\2/gi, '$1$2***$2'],
 ];
 
 export function redact(text) {

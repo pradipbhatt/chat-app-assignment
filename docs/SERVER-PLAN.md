@@ -185,6 +185,18 @@ A room whose name starts with `p-` is private. It is created through
 characters — and that slug is the only key: anyone holding the link can enter,
 anyone without it cannot, and guessing one is not practical.
 
+Entry needs **two things**: the link and a six character passcode issued with
+it. A link can be forwarded, screenshotted or logged by a chat client without
+its owner noticing, so the link alone is treated as a weak secret. The passcode
+is generated from an alphabet with `I`, `O`, `0` and `1` removed so it survives
+being read aloud or copied by hand, is compared in constant time, and is
+throttled to six wrong guesses per five minutes per socket. It is redacted from
+the server log like any other secret.
+
+Anyone already inside the room can read the passcode back, so a member can
+re-share it without the creator being present. An authenticated administrator
+enters without it.
+
 Private rooms live entirely in memory:
 
 - **Never written to MongoDB.** No room record, no messages. `GET /api/rooms`

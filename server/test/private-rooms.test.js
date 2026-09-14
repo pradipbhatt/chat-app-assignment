@@ -1,6 +1,8 @@
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  verifyPasscode,
+  readPasscode,
   createPrivateRoom,
   getPrivateRoom,
   isPrivateName,
@@ -111,4 +113,58 @@ test('the buffer is capped so a long session cannot grow without bound', () => {
   const all = readMessages(slug, 1000);
   assert.equal(all.messages.length, 200);
   assert.equal(all.messages.at(-1).text, 'm259');
+});
+
+test('a created room carries a six character passcode without ambiguous letters', () => {
+  const { slug, passcode } = createPrivateRoom('Maker');
+  assert.equal(passcode.length, 6);
+  assert.ok(!/[IO01]/.test(passcode));
+  assert.equal(readPasscode(slug), passcode);
+});
+
+test('passcodes differ between rooms', () => {
+  const codes = new Set();
+  for (let i = 0; i < 100; i += 1) codes.add(createPrivateRoom('Maker').passcode);
+  assert.ok(codes.size > 90);
+});
+
+test('the passcode is checked case insensitively and ignores padding', () => {
+  const { slug, passcode } = createPrivateRoom('Maker');
+  assert.equal(verifyPasscode(slug, passcode).ok, true);
+  assert.equal(verifyPasscode(slug, `  ${passcode.toLowerCase()}  `.trim().toUpperCase()).ok, true);
+});
+
+test('a wrong passcode is refused and repeated guesses are throttled', () => {
+  const { slug } = createPrivateRoom('Maker');
+
+  for (let i = 0; i < 6; i += 1) {
+    assert.equal(verifyPasscode(slug, 'AAAAAA', 'guesser').code, 'PASSCODE_INVALID');
+  }
+
+  assert.equal(verifyPasscode(slug, 'AAAAAA', 'guesser').code, 'PASSCODE_THROTTLED');
+});
+
+test('throttling is per guesser, not per room', () => {
+  const { slug, passcode } = createPrivateRoom('Maker');
+  for (let i = 0; i < 7; i += 1) verifyPasscode(slug, 'AAAAAA', 'guesser');
+
+  assert.equal(verifyPasscode(slug, passcode, 'someone-else').ok, true);
+});
+
+test('a correct passcode clears that guesser\'s failed attempts', () => {
+  const { slug, passcode } = createPrivateRoom('Maker');
+  verifyPasscode(slug, 'AAAAAA', 'person');
+  verifyPasscode(slug, 'AAAAAA', 'person');
+  assert.equal(verifyPasscode(slug, passcode, 'person').ok, true);
+
+  for (let i = 0; i < 6; i += 1) {
+    assert.equal(verifyPasscode(slug, 'AAAAAA', 'person').code, 'PASSCODE_INVALID');
+  }
+});
+
+test('an expired room refuses any passcode', () => {
+  const { slug, passcode } = createPrivateRoom('Maker');
+  sweep(Date.now() + 5 * HOUR);
+  assert.equal(verifyPasscode(slug, passcode).code, 'ROOM_EXPIRED');
+  assert.equal(readPasscode(slug), null);
 });
