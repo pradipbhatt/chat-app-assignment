@@ -51,6 +51,15 @@ function unseal(record) {
   return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
 }
 
+function canOpen(record) {
+  try {
+    createPrivateKey(unseal(record));
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 export async function ensureServerEscrow() {
   if (!config.escrowSecret) {
     console.warn('[escrow] no sealing secret configured, review key not created');
@@ -58,7 +67,13 @@ export async function ensureServerEscrow() {
   }
 
   const existing = await readEscrow();
-  if (existing && existing.sealedBy === 'server') return existing;
+
+  if (existing && existing.sealedBy === 'server') {
+    if (canOpen(existing)) return existing;
+    console.warn(
+      '[escrow] the stored review key cannot be opened with this ESCROW_SECRET, replacing it — rooms created under the previous key are no longer reviewable',
+    );
+  }
 
   const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const publicJwk = publicKey.export({ format: 'jwk' });

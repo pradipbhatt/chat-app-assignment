@@ -155,8 +155,8 @@ export function RoomInspector({ rooms, onKick, onBan, onClear }) {
         <>
           {isPrivate && !readable && state === 'ready' && (
             <Notice tone="warning">
-              This room was created before the review key existed, so its messages cannot be
-              opened.
+              Sealed with an older review key, so this conversation cannot be opened. Rooms created
+              from now on open normally.
             </Notice>
           )}
 

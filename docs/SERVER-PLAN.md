@@ -240,6 +240,13 @@ the way, because you asked for the administrator to read without one.
 - Rotating `ESCROW_SECRET` (or `JWT_SECRET`, when no dedicated secret is set)
   makes every existing private room permanently unreadable. Set `ESCROW_SECRET`
   explicitly so that rotating tokens does not destroy transcripts.
+- **Every server sharing a database must share the same `ESCROW_SECRET`.** The
+  review key is sealed under it, so a second server with a different secret
+  cannot open the key the first one wrote. On boot a server that finds a key it
+  cannot open replaces it and says so in the log, rather than silently reporting
+  every room as encrypted — but the rooms sealed under the previous key are then
+  lost. Development and production sharing one database is the usual way to trip
+  over this.
 - A room whose wrapped key cannot be opened degrades to sealed rather than
   failing the request; the panel says so instead of erroring.
 - The earlier passphrase-sealed key was replaced on first boot of this version,
